@@ -1,0 +1,14 @@
+[project]
+name = "macro_reporter"
+version = "0.1.0"
+description = "A service that generates macroeconomic financial reports"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "openbb>=4.0.0",
+    "pandas>=2.0.0",
+    "weasyprint>=58.0",
+    "requests>=2.31.0",
+    "matplotlib>=3.8.0",
+    "plotly>=5.18.0",
+]
