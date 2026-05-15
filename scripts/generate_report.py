@@ -216,27 +216,33 @@ def create_macro_dashboard() -> dict:
         logger.warning(f"Error loading US Unemployment: {e}")
         dashboard["us_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0}
     
-    # GDP (nominal)
+    # GDP (nominal) - Quarterly data, use immediate previous quarter
     try:
         gdp = load_from_csv("us_gdp")
         latest = get_latest_value(gdp)
+        # For quarterly data, previous = prior quarter (1 position back)
+        previous = get_previous_value(gdp, days=1) if len(gdp) >= 2 else 0
+        change = calculate_change(gdp, days=1) if len(gdp) >= 2 else 0
         dashboard["us_gdp"] = {
             "value": latest,
-            "previous": get_previous_value(gdp, days=90),  # Quarterly data
-            "change_1m": calculate_change(gdp, days=90),
+            "previous": previous,
+            "change_1m": change,
         }
     except Exception as e:
         logger.warning(f"Error loading US GDP: {e}")
         dashboard["us_gdp"] = {"value": 0, "previous": 0, "change_1m": 0}
     
-    # GDP Real
+    # GDP Real - Quarterly data, use immediate previous quarter
     try:
         gdp_real = load_from_csv("us_gdp_real")
         latest = get_latest_value(gdp_real)
+        # For quarterly data, previous = prior quarter (1 position back)
+        previous = get_previous_value(gdp_real, days=1) if len(gdp_real) >= 2 else 0
+        change = calculate_change(gdp_real, days=1) if len(gdp_real) >= 2 else 0
         dashboard["us_gdp_real"] = {
             "value": latest,
-            "previous": get_previous_value(gdp_real, days=90),  # Quarterly data
-            "change_1m": calculate_change(gdp_real, days=90),
+            "previous": previous,
+            "change_1m": change,
         }
     except Exception as e:
         logger.warning(f"Error loading US GDP Real: {e}")
