@@ -628,10 +628,8 @@ def create_html_report(
         "us_gdp_real": "US GDP (Real)",
         "treasury_10y": "US 10Y Treasury",
         "euribor_3m": "Euribor 3M",
-        "ecb_yield_2y": "ECB 2Y Yield",
-        "ecb_yield_5y": "ECB 5Y Yield",
+        "ecb_yield_1y": "ECB 1Y Yield",
         "ecb_yield_10y": "ECB 10Y Yield",
-        "ecb_yield_30y": "ECB 30Y Yield",
         "ecb_estr": "ECB €STR",
     }
     
@@ -769,10 +767,8 @@ def create_html_report(
         "us_gdp_real": False,
         "treasury_10y": True,
         "euribor_3m": True,
-        "ecb_yield_2y": True,
-        "ecb_yield_5y": True,
+        "ecb_yield_1y": True,
         "ecb_yield_10y": True,
-        "ecb_yield_30y": True,
         "ecb_estr": True,
     }
     
@@ -808,7 +804,7 @@ def create_html_report(
     
     # Add ECB data if available
     ecb_keys = [
-        'ecb_yield_2y', 'ecb_yield_5y', 'ecb_yield_10y', 'ecb_yield_30y',
+        'ecb_yield_1y', 'ecb_yield_10y',
         'ecb_estr'
     ]
     for key in ecb_keys:

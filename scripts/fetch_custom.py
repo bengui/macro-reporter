@@ -219,10 +219,8 @@ def fetch_ecb_yield_curve() -> None:
     # Format: YC.B.U2.EUR.4F.G_N_C.SV_C_YM.SR_{MATURITY}
     # But API needs just the key part after dataflow: B.U2.EUR.4F.G_N_C.SV_C_YM.SR_{MATURITY}
     yield_series = {
-        "2Y": "B.U2.EUR.4F.G_N_C.SV_C_YM.SR_2Y",
-        "5Y": "B.U2.EUR.4F.G_N_C.SV_C_YM.SR_5Y",
+        "1Y": "B.U2.EUR.4F.G_N_C.SV_C_YM.SR_1Y",
         "10Y": "B.U2.EUR.4F.G_N_C.SV_C_YM.SR_10Y",
-        "30Y": "B.U2.EUR.4F.G_N_C.SV_C_YM.SR_30Y",
     }
     
     yields = {}
