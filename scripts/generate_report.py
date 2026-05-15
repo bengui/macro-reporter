@@ -395,6 +395,8 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         ax.set_ylabel("Price")
         ax.legend()
         ax.grid(True)
+        # Reduce x-axis label density to avoid overlap
+        ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(10))
         plt.tight_layout()
         
         img_path = REPORTS_DIR / "sp500_trend.png"
@@ -418,6 +420,8 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         ax1.plot(vix["date"], vix["close"], color=color, label="VIX")
         ax1.tick_params(axis="y", labelcolor=color)
         ax1.grid(True)
+        # Reduce x-axis label density to avoid overlap
+        ax1.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(10))
         
         ax2 = ax1.twinx()
         color = "tab:orange"
