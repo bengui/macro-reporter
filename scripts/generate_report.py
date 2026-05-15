@@ -388,6 +388,8 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     # Create sp500 trend chart
     try:
         sp500 = load_from_csv("sp500")
+        # Convert date strings to datetime for proper plotting
+        sp500["date"] = pd.to_datetime(sp500["date"])
         fig, ax = plt.subplots(figsize=(10, 4))
         ax.plot(sp500["date"], sp500["close"], label="S&P 500")
         ax.set_title("S&P 500 Price Trend (Last 90 Days)")
@@ -412,6 +414,9 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     try:
         vix = load_from_csv("vix")
         gold = load_from_csv("gold")
+        # Convert date strings to datetime for proper plotting
+        vix["date"] = pd.to_datetime(vix["date"])
+        gold["date"] = pd.to_datetime(gold["date"])
         
         fig, ax1 = plt.subplots(figsize=(10, 4))
         
