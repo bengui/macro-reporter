@@ -84,8 +84,13 @@ FOREX_PAIRS = {
 MACRO_INDICATORS = {
     "us_cpi": {"method": "cpi", "country": "united_states"},  # US CPI
     "us_unemployment": {"method": "unemployment", "country": "united_states"},  # US Unemployment Rate
+    # Euro Area / EU data
+    "eu_cpi": {"method": "cpi", "country": "euro_area", "harmonized": True, "provider": "imf"},  # EU CPI
+    "eu_unemployment": {"method": "unemployment", "country": "european_union27_2020"},  # EU Unemployment
+    # Spain data
+    "spain_cpi": {"method": "cpi", "country": "spain"},  # Spain CPI
+    "spain_unemployment": {"method": "unemployment", "country": "spain"},  # Spain Unemployment
     # GDP uses fred_series directly since gdp() is not callable
-    # Note: EU data requires API keys for most providers, skipping for now
 }
 
 # Additional macro indicators using FRED directly
@@ -174,9 +179,14 @@ def fetch_macroeconomics() -> None:
             logger.info(f"  Fetching {name}...")
             method_name = config["method"]
             country = config.get("country", "united_states")
+            harmonized = config.get("harmonized", False)
+            provider = config.get("provider", None)
             
             method = getattr(obb.economy, method_name)
-            data = method(country=country).to_df()
+            kwargs = {"country": country, "harmonized": harmonized}
+            if provider:
+                kwargs["provider"] = provider
+            data = method(**kwargs).to_df()
             
             if data.empty:
                 logger.warning(f"  No data returned for {name}")

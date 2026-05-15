@@ -224,6 +224,66 @@ def create_macro_dashboard() -> dict:
         logger.warning(f"Error loading US Unemployment: {e}")
         dashboard["us_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0}
     
+    # EU CPI - Monthly data
+    try:
+        eu_cpi = load_from_csv("eu_cpi")
+        latest = get_latest_value(eu_cpi) * 100
+        previous = get_previous_value(eu_cpi, days=1) * 100 if len(eu_cpi) >= 2 else 0
+        change = calculate_change(eu_cpi, days=1) if len(eu_cpi) >= 2 else 0
+        dashboard["eu_cpi"] = {
+            "value": latest,
+            "previous": previous,
+            "change_1m": change,
+        }
+    except Exception as e:
+        logger.warning(f"Error loading EU CPI: {e}")
+        dashboard["eu_cpi"] = {"value": 0, "previous": 0, "change_1m": 0}
+    
+    # EU Unemployment - Monthly data
+    try:
+        eu_unemployment = load_from_csv("eu_unemployment")
+        latest = get_latest_value(eu_unemployment) * 100
+        previous = get_previous_value(eu_unemployment, days=1) * 100 if len(eu_unemployment) >= 2 else 0
+        change = calculate_change(eu_unemployment, days=1) if len(eu_unemployment) >= 2 else 0
+        dashboard["eu_unemployment"] = {
+            "value": latest,
+            "previous": previous,
+            "change_1m": change,
+        }
+    except Exception as e:
+        logger.warning(f"Error loading EU Unemployment: {e}")
+        dashboard["eu_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0}
+    
+    # Spain CPI - Monthly data
+    try:
+        spain_cpi = load_from_csv("spain_cpi")
+        latest = get_latest_value(spain_cpi) * 100
+        previous = get_previous_value(spain_cpi, days=1) * 100 if len(spain_cpi) >= 2 else 0
+        change = calculate_change(spain_cpi, days=1) if len(spain_cpi) >= 2 else 0
+        dashboard["spain_cpi"] = {
+            "value": latest,
+            "previous": previous,
+            "change_1m": change,
+        }
+    except Exception as e:
+        logger.warning(f"Error loading Spain CPI: {e}")
+        dashboard["spain_cpi"] = {"value": 0, "previous": 0, "change_1m": 0}
+    
+    # Spain Unemployment - Monthly data
+    try:
+        spain_unemployment = load_from_csv("spain_unemployment")
+        latest = get_latest_value(spain_unemployment) * 100
+        previous = get_previous_value(spain_unemployment, days=1) * 100 if len(spain_unemployment) >= 2 else 0
+        change = calculate_change(spain_unemployment, days=1) if len(spain_unemployment) >= 2 else 0
+        dashboard["spain_unemployment"] = {
+            "value": latest,
+            "previous": previous,
+            "change_1m": change,
+        }
+    except Exception as e:
+        logger.warning(f"Error loading Spain Unemployment: {e}")
+        dashboard["spain_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0}
+    
     # GDP (nominal) - Quarterly data, use immediate previous quarter
     try:
         gdp = load_from_csv("us_gdp")
@@ -488,6 +548,10 @@ def create_html_report(
         "usd_cny": get_traffic_light_signal(snapshot["usd_cny"]["value"], {"red": 7.2, "yellow": 7.0}),
         "us_cpi": get_traffic_light_signal(dashboard["us_cpi"]["value"], THRESHOLDS["cpi"]),
         "us_unemployment": get_traffic_light_signal(dashboard["us_unemployment"]["value"], THRESHOLDS["unemployment"]),
+        "eu_cpi": get_traffic_light_signal(dashboard.get("eu_cpi", {}).get("value", 0), THRESHOLDS["cpi"]),
+        "eu_unemployment": get_traffic_light_signal(dashboard.get("eu_unemployment", {}).get("value", 0), THRESHOLDS["unemployment"]),
+        "spain_cpi": get_traffic_light_signal(dashboard.get("spain_cpi", {}).get("value", 0), THRESHOLDS["cpi"]),
+        "spain_unemployment": get_traffic_light_signal(dashboard.get("spain_unemployment", {}).get("value", 0), THRESHOLDS["unemployment"]),
         "treasury_10y": get_traffic_light_signal(dashboard["treasury_10y"]["value"], THRESHOLDS["treasury_10y"]),
         "euribor_3m": get_traffic_light_signal(dashboard["euribor_3m"]["value"], THRESHOLDS["euribor_3m"]),
         "us_gdp": get_traffic_light_signal(dashboard["us_gdp"]["change_1m"], THRESHOLDS["gdp_growth"]),
@@ -505,6 +569,10 @@ def create_html_report(
     macro_labels = {
         "us_cpi": "US CPI",
         "us_unemployment": "US Unemployment",
+        "eu_cpi": "EU CPI",
+        "eu_unemployment": "EU Unemployment",
+        "spain_cpi": "Spain CPI",
+        "spain_unemployment": "Spain Unemployment",
         "us_gdp": "US GDP (Nominal)",
         "us_gdp_real": "US GDP (Real)",
         "treasury_10y": "US 10Y Treasury",
@@ -537,6 +605,19 @@ def create_html_report(
             US GDP (Nominal) at {format_number(dashboard['us_gdp']['value'])} 
             ({signals['us_gdp']}), Real GDP at {format_number(dashboard['us_gdp_real']['value'])} 
             ({signals['us_gdp_real']}).
+        </p>
+        """
+    
+    # Add EU and Spain info if available
+    if dashboard.get("eu_cpi") and dashboard["eu_cpi"]["value"] > 0:
+        executive_summary += f"""
+        <p style="font-size: 16px; line-height: 1.6; margin-top: 10px;">
+            EU CPI at {format_percentage(dashboard['eu_cpi']['value'])} 
+            ({signals.get('eu_cpi', '')}), EU Unemployment at {format_percentage(dashboard['eu_unemployment']['value'])} 
+            ({signals.get('eu_unemployment', '')}). 
+            Spain CPI at {format_percentage(dashboard['spain_cpi']['value'])} 
+            ({signals.get('spain_cpi', '')}), Spain Unemployment at {format_percentage(dashboard['spain_unemployment']['value'])} 
+            ({signals.get('spain_unemployment', '')}).
         </p>
         """
     
@@ -629,6 +710,10 @@ def create_html_report(
     macro_value_pct = {
         "us_cpi": True,
         "us_unemployment": True,
+        "eu_cpi": True,
+        "eu_unemployment": True,
+        "spain_cpi": True,
+        "spain_unemployment": True,
         "us_gdp": False,
         "us_gdp_real": False,
         "treasury_10y": True,
@@ -660,6 +745,15 @@ def create_html_report(
     {format_macro('treasury_10y')}
     {format_macro('euribor_3m')}
     """
+    
+    # Add EU and Spain data if available
+    eu_spain_keys = [
+        'eu_cpi', 'eu_unemployment',
+        'spain_cpi', 'spain_unemployment'
+    ]
+    for key in eu_spain_keys:
+        if key in dashboard:
+            macro_table_rows += format_macro(key)
     
     # Add ECB data if available
     ecb_keys = [
