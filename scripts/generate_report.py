@@ -190,27 +190,33 @@ def create_macro_dashboard() -> dict:
     """Create macroeconomic dashboard data."""
     dashboard = {}
     
-    # CPI
+    # CPI - Monthly data, use immediate previous month
     try:
         cpi = load_from_csv("us_cpi")
         latest = get_latest_value(cpi)
+        # For monthly data, previous = prior month (1 position back)
+        previous = get_previous_value(cpi, days=1) if len(cpi) >= 2 else 0
+        change = calculate_change(cpi, days=1) if len(cpi) >= 2 else 0
         dashboard["us_cpi"] = {
             "value": latest,
-            "previous": get_previous_value(cpi, days=30),
-            "change_1m": calculate_change(cpi, days=30),
+            "previous": previous,
+            "change_1m": change,
         }
     except Exception as e:
         logger.warning(f"Error loading US CPI: {e}")
         dashboard["us_cpi"] = {"value": 0, "previous": 0, "change_1m": 0}
     
-    # Unemployment
+    # Unemployment - Monthly data, use immediate previous month
     try:
         unemployment = load_from_csv("us_unemployment")
         latest = get_latest_value(unemployment)
+        # For monthly data, previous = prior month (1 position back)
+        previous = get_previous_value(unemployment, days=1) if len(unemployment) >= 2 else 0
+        change = calculate_change(unemployment, days=1) if len(unemployment) >= 2 else 0
         dashboard["us_unemployment"] = {
             "value": latest,
-            "previous": get_previous_value(unemployment, days=30),
-            "change_1m": calculate_change(unemployment, days=30),
+            "previous": previous,
+            "change_1m": change,
         }
     except Exception as e:
         logger.warning(f"Error loading US Unemployment: {e}")
