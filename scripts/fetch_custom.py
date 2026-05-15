@@ -55,7 +55,7 @@ if ECB_KEY:
 def fetch_ecb_series(
     dataflow: str,
     series_key: str,
-    last_n: int = 30,
+    start_date: Optional[str] = None,
     timeout: int = 30
 ) -> Optional[dict]:
     """
@@ -64,17 +64,30 @@ def fetch_ecb_series(
     Args:
         dataflow: Dataflow ID (e.g., 'YC', 'EXR', 'FM')
         series_key: Series key within the dataflow
-        last_n: Number of most recent observations to return
+        start_date: Start date in YYYY-MM format (e.g., '2025-01'). If None, fetches last few observations.
         timeout: Request timeout in seconds
     
     Returns:
-        Dictionary with latest value, observations history, or None if error
+        Dictionary with latest value, observations history with dates, or None if error
     """
     url = f"{ECB_API_BASE}/{dataflow}/{series_key}"
-    params = {
-        "format": "jsondata",
-        "lastNObservations": str(last_n),
-    }
+    
+    # Use CSV format to get actual dates in the TIME_PERIOD column
+    from datetime import datetime
+    
+    if start_date:
+        end_date = datetime.now().strftime("%Y-%m")
+        params = {
+            "format": "csvdata",
+            "startPeriod": start_date,
+            "endPeriod": end_date,
+        }
+    else:
+        # Fetch enough observations to cover ~6 months
+        params = {
+            "format": "csvdata",
+            "lastNObservations": "180",
+        }
     
     try:
         response = requests.get(url, params=params, timeout=timeout)
@@ -82,63 +95,40 @@ def fetch_ecb_series(
             logger.warning(f"  ECB API returned {response.status_code} for {dataflow}/{series_key}")
             return None
         
-        data = json.loads(response.text)
+        # Parse CSV response
+        import csv
+        from io import StringIO
         
-        # Extract all observations
-        if "dataSets" not in data or not data["dataSets"]:
-            return None
-        
-        dataset = data["dataSets"][0]
-        if "series" not in dataset:
-            return None
-        
-        series = list(dataset["series"].values())[0]
-        if "observations" not in series or not series["observations"]:
-            return None
-        
-        observations = series["observations"]
-        
-        if not observations:
-            return None
-        
-        # Parse all observations into a list of (date, value) tuples, sorted by date
+        reader = csv.DictReader(StringIO(response.text))
         parsed_obs = []
-        for time_str, val_tuple in observations.items():
-            value = val_tuple[0]
-            if value is not None:
-                try:
-                    # Try to parse time as integer first (relative periods like 0, 1, 2, ...)
-                    # If that fails, keep as string
-                    try:
-                        time_int = int(time_str)
-                    except ValueError:
-                        time_int = -1
-                    
+        
+        for row in reader:
+            try:
+                time_period = row.get("TIME_PERIOD", "")
+                obs_value = row.get("OBS_VALUE", "")
+                
+                if obs_value and obs_value.replace(".", "").replace("-", "").replace("e", "").replace("E", "") and time_period:
+                    value = float(obs_value)
                     parsed_obs.append({
-                        "time": time_str,
-                        "time_int": time_int,
-                        "value": float(value)
+                        "time": time_period,
+                        "value": value
                     })
-                except (ValueError, TypeError):
-                    continue
+            except (ValueError, TypeError):
+                continue
         
         if not parsed_obs:
             return None
         
-        # Sort by time_int numerically (most recent last = highest time_int)
-        # If time_int is -1 (non-numeric), sort those to the end
-        parsed_obs.sort(key=lambda x: x["time_int"] if x["time_int"] >= 0 else -1)
-        
-        # Remove time_int from observations before returning (clean up)
-        clean_obs = [{"time": o["time"], "value": o["value"]} for o in parsed_obs]
+        # Sort by time (most recent last)
+        parsed_obs.sort(key=lambda x: x["time"])
         
         latest = parsed_obs[-1]
         
         return {
             "value": latest["value"],
             "time": latest["time"],
-            "observations": clean_obs,  # Full history (without time_int)
-            "raw_data": data,
+            "observations": parsed_obs,  # Full history with actual dates
+            "raw_data": response.text,
         }
         
     except Exception as e:
@@ -179,9 +169,12 @@ def fetch_euribor() -> None:
     
     rates = {}
     series_history = {}
+    # Use start date of 6 months ago to get proper data with dates
+    from datetime import datetime, timedelta
+    start_date = (datetime.now() - timedelta(days=180)).strftime("%Y-%m")
     
     for tenor, series_key in euribor_series.items():
-        result = fetch_ecb_series("FM", series_key, last_n=30)
+        result = fetch_ecb_series("FM", series_key, start_date=start_date)
         if result and "value" in result:
             rates[tenor] = result["value"]
             series_history[tenor] = result.get("observations", [])
@@ -234,8 +227,12 @@ def fetch_ecb_yield_curve() -> None:
     
     yields = {}
     series_history = {}
+    # Use start date of 6 months ago to get proper monthly data with dates
+    from datetime import datetime, timedelta
+    start_date = (datetime.now() - timedelta(days=180)).strftime("%Y-%m")
+    
     for maturity, series_key in yield_series.items():
-        result = fetch_ecb_series("YC", series_key, last_n=30)
+        result = fetch_ecb_series("YC", series_key, start_date=start_date)
         if result and "value" in result:
             yields[maturity] = result["value"]
             series_history[maturity] = result.get("observations", [])
@@ -272,8 +269,12 @@ def fetch_ecb_reference_rates() -> None:
     
     rates = {}
     series_history = {}
+    # Use start date of 6 months ago to get proper monthly data with dates
+    from datetime import datetime, timedelta
+    start_date = (datetime.now() - timedelta(days=180)).strftime("%Y-%m")
+    
     for name, series_key in reference_series.items():
-        result = fetch_ecb_series("FM", series_key, last_n=30)
+        result = fetch_ecb_series("FM", series_key, start_date=start_date)
         if result and "value" in result:
             rates[name] = result["value"]
             series_history[name] = result.get("observations", [])
@@ -310,7 +311,8 @@ def fetch_ecb_exchange_rates() -> None:
     
     rates = {}
     for name, series_key in exchange_series.items():
-        result = fetch_ecb_series("EXR", series_key, last_n=1)
+        # Exchange rates - only need latest value, no history needed
+        result = fetch_ecb_series("EXR", series_key)
         if result and "value" in result:
             rates[name] = result["value"]
             logger.info(f"  {name}: {result['value']}")

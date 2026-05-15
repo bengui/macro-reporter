@@ -8,7 +8,7 @@ with executive summary, market snapshot, macroeconomic dashboard, and visualizat
 
 import argparse
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -137,6 +137,55 @@ def calculate_change(df: pd.DataFrame, column: str = "close", days: int = 30) ->
     if previous == 0:
         return 0.0
     return (latest - previous) / abs(previous) * 100
+
+
+def get_previous_month_value(obs_list: list) -> float:
+    """
+    Get the value from approximately one month ago from a list of dated observations.
+    Observations should have 'time' (date string) and 'value' keys, sorted oldest first.
+    """
+    if not obs_list or len(obs_list) < 2:
+        return 0.0
+    
+    # Get the latest date
+    latest_obs = obs_list[-1]
+    try:
+        from datetime import datetime
+        # Try to parse the latest date
+        try:
+            latest_date = datetime.strptime(latest_obs["time"], "%Y-%m")
+        except ValueError:
+            try:
+                latest_date = datetime.strptime(latest_obs["time"], "%Y-%m-%d")
+            except ValueError:
+                # Relative index - use second to last
+                return obs_list[-2]["value"] if len(obs_list) >= 2 else 0.0
+        
+        # Find observation from ~30 days ago
+        target_date = latest_date - timedelta(days=30)
+        
+        # Find the observation closest to but before the target date
+        best_obs = None
+        for obs in reversed(obs_list[:-1]):  # Exclude the latest, check oldest to newest
+            try:
+                obs_date = datetime.strptime(obs["time"], "%Y-%m")
+            except ValueError:
+                try:
+                    obs_date = datetime.strptime(obs["time"], "%Y-%m-%d")
+                except ValueError:
+                    continue
+            
+            if obs_date <= target_date:
+                best_obs = obs
+                break
+        
+        if best_obs:
+            return best_obs["value"]
+        else:
+            # Fallback to second observation from end
+            return obs_list[-2]["value"] if len(obs_list) >= 2 else 0.0
+    except Exception:
+        return obs_list[-2]["value"] if len(obs_list) >= 2 else 0.0
 
 
 def create_market_snapshot() -> dict:
@@ -328,9 +377,9 @@ def create_macro_dashboard() -> dict:
                 obs_list = history.get(maturity, [])
                 if obs_list and len(obs_list) >= 2:
                     # Observations are sorted oldest first, newest last
-                    # First element is ~30 days ago, last element is most recent (same as 'value')
-                    prev_val = obs_list[0]["value"]
-                    # Calculate change from first to last observation
+                    # Use helper to find value from ~1 month ago
+                    prev_val = get_previous_month_value(obs_list)
+                    # Calculate change from previous month
                     if prev_val != 0:
                         change_1m = ((value - prev_val) / abs(prev_val)) * 100
                 dashboard[f"ecb_yield_{maturity.lower()}"] = {
@@ -353,8 +402,9 @@ def create_macro_dashboard() -> dict:
                 obs_list = history.get(name, [])
                 if obs_list and len(obs_list) >= 2:
                     # Observations are sorted oldest first, newest last
-                    prev_val = obs_list[0]["value"]
-                    # Calculate change from first to last observation
+                    # Use helper to find value from ~1 month ago
+                    prev_val = get_previous_month_value(obs_list)
+                    # Calculate change from previous month
                     if prev_val != 0:
                         change_1m = ((value - prev_val) / abs(prev_val)) * 100
                 dashboard[f"ecb_{name.lower()}"] = {
@@ -419,7 +469,8 @@ def create_macro_dashboard() -> dict:
                 obs_list = history.get("EURIBOR_3M", [])
                 if obs_list and len(obs_list) >= 2:
                     # Observations are sorted oldest first, newest last
-                    prev_val = obs_list[0]["value"]
+                    # Use helper to find value from ~1 month ago
+                    prev_val = get_previous_month_value(obs_list)
                     if prev_val != 0:
                         change_1m = ((value - prev_val) / abs(prev_val)) * 100
                 dashboard["euribor_3m"] = {
@@ -435,7 +486,7 @@ def create_macro_dashboard() -> dict:
                         change_1m = 0
                         obs_list = history.get(key, [])
                         if obs_list and len(obs_list) >= 2:
-                            prev_val = obs_list[0]["value"]
+                            prev_val = get_previous_month_value(obs_list)
                             if prev_val != 0:
                                 change_1m = ((value - prev_val) / abs(prev_val)) * 100
                         dashboard["euribor_3m"] = {
