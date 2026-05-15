@@ -191,11 +191,12 @@ def create_macro_dashboard() -> dict:
     dashboard = {}
     
     # CPI - Monthly data, use immediate previous month
+    # Note: CPI data comes as decimals (0.04 = 4%), convert to percentages
     try:
         cpi = load_from_csv("us_cpi")
-        latest = get_latest_value(cpi)
+        latest = get_latest_value(cpi) * 100
         # For monthly data, previous = prior month (1 position back)
-        previous = get_previous_value(cpi, days=1) if len(cpi) >= 2 else 0
+        previous = get_previous_value(cpi, days=1) * 100 if len(cpi) >= 2 else 0
         change = calculate_change(cpi, days=1) if len(cpi) >= 2 else 0
         dashboard["us_cpi"] = {
             "value": latest,
@@ -207,11 +208,12 @@ def create_macro_dashboard() -> dict:
         dashboard["us_cpi"] = {"value": 0, "previous": 0, "change_1m": 0}
     
     # Unemployment - Monthly data, use immediate previous month
+    # Note: Unemployment data comes as decimals (0.04 = 4%), convert to percentages
     try:
         unemployment = load_from_csv("us_unemployment")
-        latest = get_latest_value(unemployment)
+        latest = get_latest_value(unemployment) * 100
         # For monthly data, previous = prior month (1 position back)
-        previous = get_previous_value(unemployment, days=1) if len(unemployment) >= 2 else 0
+        previous = get_previous_value(unemployment, days=1) * 100 if len(unemployment) >= 2 else 0
         change = calculate_change(unemployment, days=1) if len(unemployment) >= 2 else 0
         dashboard["us_unemployment"] = {
             "value": latest,
