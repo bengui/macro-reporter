@@ -246,11 +246,23 @@ def create_macro_dashboard() -> dict:
     try:
         yield_curve = load_from_json("ecb_yield_curve", CUSTOM_DATA_DIR)
         if "yields" in yield_curve and isinstance(yield_curve["yields"], dict):
+            history = yield_curve.get("history", {})
             for maturity, value in yield_curve["yields"].items():
+                prev_val = 0
+                change_1m = 0
+                # Get historical observations for this maturity
+                obs_list = history.get(maturity, [])
+                if obs_list and len(obs_list) >= 2:
+                    # Observations are sorted oldest first, newest last
+                    # First element is ~30 days ago, last element is most recent (same as 'value')
+                    prev_val = obs_list[0]["value"]
+                    # Calculate change from first to last observation
+                    if prev_val != 0:
+                        change_1m = ((value - prev_val) / abs(prev_val)) * 100
                 dashboard[f"ecb_yield_{maturity.lower()}"] = {
                     "value": value,
-                    "previous": 0,
-                    "change_1m": 0,
+                    "previous": prev_val,
+                    "change_1m": change_1m,
                 }
     except Exception as e:
         logger.warning(f"Error loading ECB yield curve: {e}")
@@ -259,11 +271,22 @@ def create_macro_dashboard() -> dict:
     try:
         ref_rates = load_from_json("ecb_reference_rates", CUSTOM_DATA_DIR)
         if "rates" in ref_rates and isinstance(ref_rates["rates"], dict):
+            history = ref_rates.get("history", {})
             for name, value in ref_rates["rates"].items():
+                prev_val = 0
+                change_1m = 0
+                # Get historical observations for this rate
+                obs_list = history.get(name, [])
+                if obs_list and len(obs_list) >= 2:
+                    # Observations are sorted oldest first, newest last
+                    prev_val = obs_list[0]["value"]
+                    # Calculate change from first to last observation
+                    if prev_val != 0:
+                        change_1m = ((value - prev_val) / abs(prev_val)) * 100
                 dashboard[f"ecb_{name.lower()}"] = {
                     "value": value,
-                    "previous": 0,
-                    "change_1m": 0,
+                    "previous": prev_val,
+                    "change_1m": change_1m,
                 }
     except Exception as e:
         logger.warning(f"Error loading ECB reference rates: {e}")
@@ -312,21 +335,39 @@ def create_macro_dashboard() -> dict:
     try:
         euribor = load_from_json("euribor", CUSTOM_DATA_DIR)
         if "rates" in euribor and isinstance(euribor["rates"], dict):
+            history = euribor.get("history", {})
             # Get 3M Euribor as the primary indicator
             if "EURIBOR_3M" in euribor["rates"]:
+                value = euribor["rates"]["EURIBOR_3M"]
+                prev_val = 0
+                change_1m = 0
+                # Get historical observations for 3M
+                obs_list = history.get("EURIBOR_3M", [])
+                if obs_list and len(obs_list) >= 2:
+                    # Observations are sorted oldest first, newest last
+                    prev_val = obs_list[0]["value"]
+                    if prev_val != 0:
+                        change_1m = ((value - prev_val) / abs(prev_val)) * 100
                 dashboard["euribor_3m"] = {
-                    "value": euribor["rates"]["EURIBOR_3M"],
-                    "previous": euribor["rates"].get("EURIBOR_3M_PREV", 0),
-                    "change_1m": 0,  # Change not available from single fetch
+                    "value": value,
+                    "previous": prev_val,
+                    "change_1m": change_1m,
                 }
             else:
                 # Try to find any 3M rate
                 for key, value in euribor["rates"].items():
                     if "3M" in key or "3MONTH" in key:
+                        prev_val = 0
+                        change_1m = 0
+                        obs_list = history.get(key, [])
+                        if obs_list and len(obs_list) >= 2:
+                            prev_val = obs_list[0]["value"]
+                            if prev_val != 0:
+                                change_1m = ((value - prev_val) / abs(prev_val)) * 100
                         dashboard["euribor_3m"] = {
                             "value": value,
-                            "previous": 0,
-                            "change_1m": 0,
+                            "previous": prev_val,
+                            "change_1m": change_1m,
                         }
                         break
                 else:
@@ -448,7 +489,6 @@ def create_html_report(
         "ecb_yield_10y": "ECB 10Y Yield",
         "ecb_yield_30y": "ECB 30Y Yield",
         "ecb_estr": "ECB €STR",
-        "ecb_eonia": "ECB EONIA",
     }
     
     # Executive summary
@@ -573,7 +613,6 @@ def create_html_report(
         "ecb_yield_10y": True,
         "ecb_yield_30y": True,
         "ecb_estr": True,
-        "ecb_eonia": True,
     }
     
     def format_macro(name):
@@ -600,7 +639,7 @@ def create_html_report(
     # Add ECB data if available
     ecb_keys = [
         'ecb_yield_2y', 'ecb_yield_5y', 'ecb_yield_10y', 'ecb_yield_30y',
-        'ecb_estr', 'ecb_eonia'
+        'ecb_estr'
     ]
     for key in ecb_keys:
         if key in dashboard:

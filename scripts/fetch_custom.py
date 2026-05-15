@@ -55,7 +55,7 @@ if ECB_KEY:
 def fetch_ecb_series(
     dataflow: str,
     series_key: str,
-    last_n: int = 1,
+    last_n: int = 30,
     timeout: int = 30
 ) -> Optional[dict]:
     """
@@ -68,7 +68,7 @@ def fetch_ecb_series(
         timeout: Request timeout in seconds
     
     Returns:
-        Dictionary with latest value or None if error
+        Dictionary with latest value, observations history, or None if error
     """
     url = f"{ECB_API_BASE}/{dataflow}/{series_key}"
     params = {
@@ -84,7 +84,7 @@ def fetch_ecb_series(
         
         data = json.loads(response.text)
         
-        # Extract the latest value
+        # Extract all observations
         if "dataSets" not in data or not data["dataSets"]:
             return None
         
@@ -97,22 +97,50 @@ def fetch_ecb_series(
             return None
         
         observations = series["observations"]
-        latest_time = max(observations.keys())
-        latest_value = observations[latest_time][0]
         
-        if latest_value is None:
+        if not observations:
             return None
         
-        try:
-            return {
-                "value": float(latest_value),
-                "time": latest_time,
-                "raw_data": data,
-            }
-        except (ValueError, TypeError) as e:
-            logger.warning(f"  Could not parse value for {dataflow}/{series_key}: {e}")
+        # Parse all observations into a list of (date, value) tuples, sorted by date
+        parsed_obs = []
+        for time_str, val_tuple in observations.items():
+            value = val_tuple[0]
+            if value is not None:
+                try:
+                    # Try to parse time as integer first (relative periods like 0, 1, 2, ...)
+                    # If that fails, keep as string
+                    try:
+                        time_int = int(time_str)
+                    except ValueError:
+                        time_int = -1
+                    
+                    parsed_obs.append({
+                        "time": time_str,
+                        "time_int": time_int,
+                        "value": float(value)
+                    })
+                except (ValueError, TypeError):
+                    continue
+        
+        if not parsed_obs:
             return None
-            
+        
+        # Sort by time_int numerically (most recent last = highest time_int)
+        # If time_int is -1 (non-numeric), sort those to the end
+        parsed_obs.sort(key=lambda x: x["time_int"] if x["time_int"] >= 0 else -1)
+        
+        # Remove time_int from observations before returning (clean up)
+        clean_obs = [{"time": o["time"], "value": o["value"]} for o in parsed_obs]
+        
+        latest = parsed_obs[-1]
+        
+        return {
+            "value": latest["value"],
+            "time": latest["time"],
+            "observations": clean_obs,  # Full history (without time_int)
+            "raw_data": data,
+        }
+        
     except Exception as e:
         logger.warning(f"  Error fetching {dataflow}/{series_key}: {e}")
         return None
@@ -136,9 +164,6 @@ def fetch_euribor() -> None:
     """
     logger.info("Fetching Euribor rates from ECB Data Portal...")
     
-    # ECB Data Portal API base URL
-    base_url = "https://data-api.ecb.europa.eu/service/data"
-    
     # Series keys for Euribor rates from FM (Financial Market data) dataflow
     # The dataflow is FM, and the series keys (from CSV output) are like:
     # FM.M.U2.EUR.RT.MM.EURIBOR3MD_.HSTA
@@ -153,46 +178,22 @@ def fetch_euribor() -> None:
     }
     
     rates = {}
+    series_history = {}
     
     for tenor, series_key in euribor_series.items():
-        try:
-            # Build API URL
-            url = f"{base_url}/FM/{series_key}?format=jsondata&lastNObservations=1"
-            logger.info(f"  Fetching {tenor} from {url}")
-            
-            response = requests.get(url, timeout=30)
-            
-            if response.status_code == 200:
-                import json
-                data = json.loads(response.text)
-                
-                # Extract the latest observation
-                if 'dataSets' in data and len(data['dataSets']) > 0:
-                    series_data = data['dataSets'][0]['series']
-                    for key, value in series_data.items():
-                        if 'observations' in value:
-                            # Get the most recent observation
-                            obs = value['observations']
-                            if obs:
-                                # Sort by time period and get latest
-                                latest_time = max(obs.keys())
-                                rate_value = obs[latest_time][0]
-                                if rate_value is not None:
-                                    try:
-                                        rates[tenor] = float(rate_value)
-                                        logger.info(f"  {tenor}: {rate_value}")
-                                        break
-                                    except (ValueError, TypeError):
-                                        logger.warning(f"  Could not parse {tenor}: {rate_value}")
-            else:
-                logger.warning(f"  {tenor} returned status {response.status_code}")
-        except Exception as e:
-            logger.warning(f"  Error fetching {tenor}: {e}")
+        result = fetch_ecb_series("FM", series_key, last_n=30)
+        if result and "value" in result:
+            rates[tenor] = result["value"]
+            series_history[tenor] = result.get("observations", [])
+            logger.info(f"  {tenor}: {result['value']}")
+        else:
+            logger.warning(f"  Could not fetch {tenor}")
     
     if rates:
         euribor_data = {
             "fetch_date": datetime.now().isoformat(),
             "rates": rates,
+            "history": series_history,
             "source": "ECB Data Portal API (FM dataflow)",
         }
         save_to_json(euribor_data, "euribor", CUSTOM_DATA_DIR)
@@ -209,6 +210,7 @@ def fetch_euribor() -> None:
                 "EURIBOR_6M": 3.92,
                 "EURIBOR_12M": 3.95,
             },
+            "history": {},
             "source": "Mock data (based on recent ECB rates)",
             "note": "ECB API was unreachable. Data reflects approximate recent rates.",
         }
@@ -231,10 +233,12 @@ def fetch_ecb_yield_curve() -> None:
     }
     
     yields = {}
+    series_history = {}
     for maturity, series_key in yield_series.items():
-        result = fetch_ecb_series("YC", series_key, last_n=1)
+        result = fetch_ecb_series("YC", series_key, last_n=30)
         if result and "value" in result:
             yields[maturity] = result["value"]
+            series_history[maturity] = result.get("observations", [])
             logger.info(f"  {maturity}: {result['value']}%")
         else:
             logger.warning(f"  Could not fetch {maturity} yield")
@@ -243,6 +247,7 @@ def fetch_ecb_yield_curve() -> None:
         yield_data = {
             "fetch_date": datetime.now().isoformat(),
             "yields": yields,
+            "history": series_history,
             "source": "ECB Data Portal API (YC dataflow)",
         }
         save_to_json(yield_data, "ecb_yield_curve", CUSTOM_DATA_DIR)
@@ -252,20 +257,26 @@ def fetch_ecb_yield_curve() -> None:
 
 
 def fetch_ecb_reference_rates() -> None:
-    """Fetch ECB reference rates (€STR, EONIA) from ECB."""
+    """Fetch ECB reference rates (€STR) from ECB.
+    
+    Note: EONIA has been replaced by €STR (Euro Short-Term Rate) as the primary
+    benchmark for euro-denominated overnight unsecured lending.
+    """
     logger.info("Fetching ECB reference rates...")
     
     # Series keys for reference rates
+    # €STR (Euro Short-Term Rate) - the modern ECB benchmark
     reference_series = {
         "ESTR": "M.U2.EUR.4F.MM.UONSTR.HSTA",  # Euro Short-Term Rate
-        "EONIA": "M.U2.EUR.4F.MM.EONIA.HSTA",    # Euro Overnight Index Average
     }
     
     rates = {}
+    series_history = {}
     for name, series_key in reference_series.items():
-        result = fetch_ecb_series("FM", series_key, last_n=1)
+        result = fetch_ecb_series("FM", series_key, last_n=30)
         if result and "value" in result:
             rates[name] = result["value"]
+            series_history[name] = result.get("observations", [])
             logger.info(f"  {name}: {result['value']}%")
         else:
             logger.warning(f"  Could not fetch {name}")
@@ -274,7 +285,9 @@ def fetch_ecb_reference_rates() -> None:
         ref_data = {
             "fetch_date": datetime.now().isoformat(),
             "rates": rates,
+            "history": series_history,
             "source": "ECB Data Portal API (FM dataflow)",
+            "note": "EONIA has been replaced by €STR as the primary ECB benchmark rate",
         }
         save_to_json(ref_data, "ecb_reference_rates", CUSTOM_DATA_DIR)
         logger.info(f"  Saved reference rates ({len(rates)} rates)")
