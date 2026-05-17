@@ -100,7 +100,16 @@ FRED_START_DATE = (datetime.now() - timedelta(days=365 * 5)).strftime("%Y-%m-%d"
 FRED_INDICATORS = {
     "us_gdp": "GDP",  # US GDP (nominal)
     "us_gdp_real": "GDPC1",  # US Real GDP
+    "us_debt_to_gdp": "FYGFDPUN",  # US Federal Debt to GDP ratio
 }
+
+# Government debt to GDP from country_profile (uses OpenBB which may use FRED/other sources)
+# These are fetched separately as they use country_profile method
+GOVT_DEBT_COUNTRIES = [
+    "united_states",  # US - uses country_profile
+    "euro_area",      # EU - uses country_profile  
+    "spain",          # Spain - uses country_profile
+]
 
 # Bonds - using fixedincome.government.treasury_rates which works without API keys
 BONDS = {
@@ -244,6 +253,36 @@ def fetch_bonds() -> None:
             logger.error(f"  Error fetching {name}: {e}")
 
 
+def fetch_govt_debt_to_gdp() -> None:
+    """Fetch government debt to GDP ratio from country profiles."""
+    logger.info("Fetching government debt to GDP ratios...")
+    
+    # Map country codes to file names
+    country_to_name = {
+        "united_states": "us_debt_to_gdp",
+        "euro_area": "eu_debt_to_gdp",
+        "spain": "spain_debt_to_gdp",
+    }
+    
+    for country in GOVT_DEBT_COUNTRIES:
+        try:
+            name = country_to_name.get(country, f"{country}_debt_to_gdp")
+            logger.info(f"  Fetching {name}...")
+            
+            data = obb.economy.country_profile(country=country).to_df()
+            
+            if data.empty or "govt_debt_gdp" not in data.columns:
+                logger.warning(f"  No govt_debt_gdp data for {country}")
+                continue
+            
+            # Reset index to include date as a column
+            data = data.reset_index()
+            save_to_csv(data, name, OPENBB_DATA_DIR)
+            logger.info(f"  Saved {name} data ({len(data)} rows)")
+        except Exception as e:
+            logger.warning(f"  Could not fetch debt to GDP for {country}: {e}")
+
+
 def fetch_news() -> None:
     """Fetch financial news - requires API keys, skip for now."""
     logger.info("Fetching news...")
@@ -267,6 +306,7 @@ def fetch_all() -> None:
     fetch_forex()
     fetch_macroeconomics()
     fetch_fred_indicators()
+    fetch_govt_debt_to_gdp()
     fetch_bonds()
     fetch_news()
     

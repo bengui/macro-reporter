@@ -329,6 +329,40 @@ def fetch_ecb_exchange_rates() -> None:
         logger.warning("  No exchange rate data fetched. Skipping.")
 
 
+def fetch_bond_spreads() -> None:
+    """Fetch Spanish and German 10Y bond yields and calculate spread vs Bund."""
+    logger.info("Fetching Spanish and German 10Y bond yields...")
+    
+    try:
+        from openbb import obb
+        
+        # Fetch country profiles which include yield_10y
+        spain_data = obb.economy.country_profile(country="spain").to_df()
+        germany_data = obb.economy.country_profile(country="germany").to_df()
+        
+        if not spain_data.empty and not germany_data.empty:
+            spain_yield = float(spain_data["yield_10y"].iloc[0]) if "yield_10y" in spain_data.columns else 0
+            germany_yield = float(germany_data["yield_10y"].iloc[0]) if "yield_10y" in germany_data.columns else 0
+            
+            # Calculate spread: Spain 10Y - Germany 10Y (as percentage)
+            # Values are in decimal form (0.03449 = 3.449%), so spread is already in decimal
+            spread = spain_yield - germany_yield  # Spread as decimal (e.g., 0.00449 = 0.449%)
+            
+            spread_data = {
+                "fetch_date": datetime.now().isoformat(),
+                "spain_10y": spain_yield * 100,  # Store as percentage for consistency
+                "germany_10y": germany_yield * 100,
+                "spread": spread * 100,  # Store spread as percentage (e.g., 0.449%)
+                "source": "OpenBB country_profile",
+            }
+            save_to_json(spread_data, "bond_spreads", CUSTOM_DATA_DIR)
+            logger.info(f"  Spain 10Y: {spain_yield * 100:.2f}%, Germany 10Y: {germany_yield * 100:.2f}%, Spread: {spread * 100:.2f}%")
+        else:
+            logger.warning("  Empty data received for bond spreads")
+    except Exception as e:
+        logger.warning(f"  Could not fetch bond spread data: {e}. Skipping.")
+
+
 def fetch_gdelt() -> None:
     """Fetch geopolitical risk data from GDELT."""
     logger.info("Fetching GDELT geopolitical risk data...")
@@ -475,6 +509,7 @@ def fetch_all() -> None:
     fetch_ecb_yield_curve()
     fetch_ecb_reference_rates()
     fetch_ecb_exchange_rates()
+    fetch_bond_spreads()
     
     # Other custom APIs
     fetch_gdelt()

@@ -51,7 +51,8 @@ THRESHOLDS = {
     "cpi": {"red": 4.0, "yellow": 2.5},  # Inflation rate
     "unemployment": {"red": 6.0, "yellow": 4.5},  # Unemployment rate
     "treasury_10y": {"red": 5.0, "yellow": 4.0},  # 10Y Treasury yield
-    "euribor_3m": {"red": 4.0, "yellow": 3.0},  # Euribor 3M rate
+    "euribor_12m_estr_spread": {"red": 1.0, "yellow": 0.5},  # Euribor 12M - ECB €STR spread (>100bps=red, 50-100bps=yellow)
+    "spain_germany_10y_spread": {"red": 2.0, "yellow": 1.0},  # Spain-Germany 10Y spread (>2%=red, 1-2%=yellow)
     "gdp_growth": {"red": -1.0, "yellow": 1.5},  # GDP growth rate
     "ecb_yield": {"red": 5.0, "yellow": 3.5},  # ECB bond yields
     "ecb_rates": {"red": 3.0, "yellow": 2.0},  # ECB policy/reference rates
@@ -390,12 +391,16 @@ def create_macro_dashboard() -> dict:
     except Exception as e:
         logger.warning(f"Error loading ECB yield curve: {e}")
     
-    # ECB Reference Rates (from custom data)
+    # ECB Reference Rates (from custom data) - Note: ESTR is loaded but not added to dashboard
+    # as it's only used for the Euribor 12M - €STR spread calculation
     try:
         ref_rates = load_from_json("ecb_reference_rates", CUSTOM_DATA_DIR)
         if "rates" in ref_rates and isinstance(ref_rates["rates"], dict):
             history = ref_rates.get("history", {})
             for name, value in ref_rates["rates"].items():
+                # Skip ESTR - it's only used for spread calculation, not displayed separately
+                if name == "ESTR":
+                    continue
                 prev_val = 0
                 change_1m = 0
                 # Get historical observations for this rate
@@ -455,53 +460,107 @@ def create_macro_dashboard() -> dict:
         logger.warning(f"Error loading Treasury rates: {e}")
         dashboard["treasury_10y"] = {"value": 0, "previous": 0, "change_1m": 0}
     
-    # Euribor rates (from custom data)
+    # Euribor 12M - ECB €STR spread (from custom data)
     try:
         euribor = load_from_json("euribor", CUSTOM_DATA_DIR)
+        ref_rates = load_from_json("ecb_reference_rates", CUSTOM_DATA_DIR)
+        
+        euribor_12m = 0
+        estr = 0
+        
+        # Get Euribor 12M rate
         if "rates" in euribor and isinstance(euribor["rates"], dict):
-            history = euribor.get("history", {})
-            # Get 3M Euribor as the primary indicator
-            if "EURIBOR_3M" in euribor["rates"]:
-                value = euribor["rates"]["EURIBOR_3M"]
-                prev_val = 0
-                change_1m = 0
-                # Get historical observations for 3M
-                obs_list = history.get("EURIBOR_3M", [])
-                if obs_list and len(obs_list) >= 2:
-                    # Observations are sorted oldest first, newest last
-                    # Use helper to find value from ~1 month ago
-                    prev_val = get_previous_month_value(obs_list)
-                    if prev_val != 0:
-                        change_1m = ((value - prev_val) / abs(prev_val)) * 100
-                dashboard["euribor_3m"] = {
-                    "value": value,
-                    "previous": prev_val,
-                    "change_1m": change_1m,
-                }
+            if "EURIBOR_12M" in euribor["rates"]:
+                euribor_12m = euribor["rates"]["EURIBOR_12M"]
             else:
-                # Try to find any 3M rate
+                # Try to find any 12M rate
                 for key, value in euribor["rates"].items():
-                    if "3M" in key or "3MONTH" in key:
-                        prev_val = 0
-                        change_1m = 0
-                        obs_list = history.get(key, [])
-                        if obs_list and len(obs_list) >= 2:
-                            prev_val = get_previous_month_value(obs_list)
-                            if prev_val != 0:
-                                change_1m = ((value - prev_val) / abs(prev_val)) * 100
-                        dashboard["euribor_3m"] = {
-                            "value": value,
-                            "previous": prev_val,
-                            "change_1m": change_1m,
-                        }
+                    if "12M" in key or "12MONTH" in key:
+                        euribor_12m = value
                         break
-                else:
-                    dashboard["euribor_3m"] = {"value": 0, "previous": 0, "change_1m": 0}
+        
+        # Get ECB €STR rate
+        if "rates" in ref_rates and isinstance(ref_rates["rates"], dict):
+            if "ESTR" in ref_rates["rates"]:
+                estr = ref_rates["rates"]["ESTR"]
+            else:
+                # Try to find any ESTR rate
+                for key, value in ref_rates["rates"].items():
+                    if "ESTR" in key or "STR" in key:
+                        estr = value
+                        break
+        
+        # Calculate spread
+        if euribor_12m > 0 and estr > 0:
+            spread = euribor_12m - estr
+            
+            # Calculate previous month spread
+            prev_spread = 0
+            change_1m = 0
+            
+            # Get historical data for both
+            euribor_history = euribor.get("history", {})
+            ref_history = ref_rates.get("history", {})
+            
+            # Try to get previous month values
+            euribor_12m_obs = None
+            estr_obs = None
+            
+            # Find 12M Euribor history
+            if "EURIBOR_12M" in euribor_history:
+                euribor_12m_obs = euribor_history["EURIBOR_12M"]
+            else:
+                for key, obs_list in euribor_history.items():
+                    if "12M" in key or "12MONTH" in key:
+                        euribor_12m_obs = obs_list
+                        break
+            
+            # Find ESTR history
+            if "ESTR" in ref_history:
+                estr_obs = ref_history["ESTR"]
+            else:
+                for key, obs_list in ref_history.items():
+                    if "ESTR" in key or "STR" in key:
+                        estr_obs = obs_list
+                        break
+            
+            # If we have history for both, calculate previous month spread
+            if euribor_12m_obs and estr_obs and len(euribor_12m_obs) >= 2 and len(estr_obs) >= 2:
+                prev_euribor_12m = get_previous_month_value(euribor_12m_obs)
+                prev_estr = get_previous_month_value(estr_obs)
+                if prev_euribor_12m > 0 and prev_estr > 0:
+                    prev_spread = prev_euribor_12m - prev_estr
+                    if prev_spread != 0:
+                        change_1m = ((spread - prev_spread) / abs(prev_spread)) * 100
+            
+            dashboard["euribor_12m_estr_spread"] = {
+                "value": spread,
+                "previous": prev_spread,
+                "change_1m": change_1m,
+            }
         else:
-            dashboard["euribor_3m"] = {"value": 0, "previous": 0, "change_1m": 0}
+            dashboard["euribor_12m_estr_spread"] = {"value": 0, "previous": 0, "change_1m": 0}
     except Exception as e:
-        logger.warning(f"Error loading Euribor rates: {e}")
-        dashboard["euribor_3m"] = {"value": 0, "previous": 0, "change_1m": 0}
+        logger.warning(f"Error loading Euribor spread: {e}")
+        dashboard["euribor_12m_estr_spread"] = {"value": 0, "previous": 0, "change_1m": 0}
+    
+    # Spanish-German 10Y bond spread (from custom data)
+    try:
+        bond_spreads = load_from_json("bond_spreads", CUSTOM_DATA_DIR)
+        if "spread" in bond_spreads:
+            # Spread is stored in bps, display as bps
+            spread = bond_spreads["spread"]
+            # For now, no history available from country_profile, so no previous/change
+            dashboard["spain_germany_10y_spread"] = {
+                "value": spread,
+                "previous": 0,
+                "change_1m": 0,
+            }
+        else:
+            dashboard["spain_germany_10y_spread"] = {"value": 0, "previous": 0, "change_1m": 0}
+    except Exception as e:
+        logger.warning(f"Error loading bond spreads: {e}")
+        dashboard["spain_germany_10y_spread"] = {"value": 0, "previous": 0, "change_1m": 0}
     
     return dashboard
 
@@ -604,7 +663,8 @@ def create_html_report(
         "spain_cpi": get_traffic_light_signal(dashboard.get("spain_cpi", {}).get("value", 0), THRESHOLDS["cpi"]),
         "spain_unemployment": get_traffic_light_signal(dashboard.get("spain_unemployment", {}).get("value", 0), THRESHOLDS["unemployment"]),
         "treasury_10y": get_traffic_light_signal(dashboard["treasury_10y"]["value"], THRESHOLDS["treasury_10y"]),
-        "euribor_3m": get_traffic_light_signal(dashboard["euribor_3m"]["value"], THRESHOLDS["euribor_3m"]),
+        "euribor_12m_estr_spread": get_traffic_light_signal(dashboard.get("euribor_12m_estr_spread", {}).get("value", 0), THRESHOLDS["euribor_12m_estr_spread"]),
+        "spain_germany_10y_spread": get_traffic_light_signal(dashboard.get("spain_germany_10y_spread", {}).get("value", 0), THRESHOLDS["spain_germany_10y_spread"]),
         "us_gdp": get_traffic_light_signal(dashboard["us_gdp"]["change_1m"], THRESHOLDS["gdp_growth"]),
         "us_gdp_real": get_traffic_light_signal(dashboard["us_gdp_real"]["change_1m"], THRESHOLDS["gdp_growth"]),
     }
@@ -627,10 +687,10 @@ def create_html_report(
         "us_gdp": "US GDP (Nominal)",
         "us_gdp_real": "US GDP (Real)",
         "treasury_10y": "US 10Y Treasury",
-        "euribor_3m": "Euribor 3M",
+        "euribor_12m_estr_spread": "Euribor 12M - €STR Spread",
+        "spain_germany_10y_spread": "Spain-Germany 10Y Spread",
         "ecb_yield_1y": "ECB 1Y Yield",
         "ecb_yield_10y": "ECB 10Y Yield",
-        "ecb_estr": "ECB €STR",
     }
     
     # Executive summary
@@ -670,12 +730,21 @@ def create_html_report(
         </p>
         """
     
-    # Add Euribor info if available
-    if dashboard.get("euribor_3m") and dashboard["euribor_3m"]["value"] > 0:
+    # Add bond spread info if available
+    if dashboard.get("spain_germany_10y_spread") and dashboard["spain_germany_10y_spread"]["value"] > 0:
         executive_summary += f"""
         <p style="font-size: 16px; line-height: 1.6; margin-top: 10px;">
-            Euribor 3-month rate is at {format_percentage(dashboard['euribor_3m']['value'])} 
-            ({signals['euribor_3m']}). 
+            Spain-Germany 10Y bond spread at {format_percentage(dashboard['spain_germany_10y_spread']['value'])} 
+            ({signals.get('spain_germany_10y_spread', '')}).
+        </p>
+        """
+    
+    # Add Euribor spread info if available
+    if dashboard.get("euribor_12m_estr_spread") and dashboard["euribor_12m_estr_spread"]["value"] > 0:
+        executive_summary += f"""
+        <p style="font-size: 16px; line-height: 1.6; margin-top: 10px;">
+            Euribor 12M - ECB €STR spread is at {format_percentage(dashboard['euribor_12m_estr_spread']['value'])} 
+            ({signals.get('euribor_12m_estr_spread', '')}). 
             US 10Y Treasury yield at {format_percentage(dashboard['treasury_10y']['value'])} 
             ({signals['treasury_10y']}).
         </p>
@@ -766,10 +835,10 @@ def create_html_report(
         "us_gdp": False,
         "us_gdp_real": False,
         "treasury_10y": True,
-        "euribor_3m": True,
+        "euribor_12m_estr_spread": True,
+        "spain_germany_10y_spread": True,
         "ecb_yield_1y": True,
         "ecb_yield_10y": True,
-        "ecb_estr": True,
     }
     
     def format_macro(name):
@@ -790,24 +859,27 @@ def create_html_report(
     {format_macro('us_gdp')}
     {format_macro('us_gdp_real')}
     {format_macro('treasury_10y')}
-    {format_macro('euribor_3m')}
     """
     
-    # Add EU and Spain data if available
-    eu_spain_keys = [
-        'eu_cpi', 'eu_unemployment',
-        'spain_cpi', 'spain_unemployment'
+    # Add ECB data if available (grouped with US yields)
+    ecb_keys = [
+        'ecb_yield_1y', 'ecb_yield_10y',
     ]
-    for key in eu_spain_keys:
+    for key in ecb_keys:
         if key in dashboard:
             macro_table_rows += format_macro(key)
     
-    # Add ECB data if available
-    ecb_keys = [
-        'ecb_yield_1y', 'ecb_yield_10y',
-        'ecb_estr'
+    # Add Euribor spread (grouped with ECB data)
+    if "euribor_12m_estr_spread" in dashboard:
+        macro_table_rows += format_macro('euribor_12m_estr_spread')
+    
+    # Add EU and Spain data if available (grouped together)
+    eu_spain_keys = [
+        'eu_cpi', 'eu_unemployment',
+        'spain_cpi', 'spain_unemployment',
+        'spain_germany_10y_spread'
     ]
-    for key in ecb_keys:
+    for key in eu_spain_keys:
         if key in dashboard:
             macro_table_rows += format_macro(key)
     
