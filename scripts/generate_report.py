@@ -695,7 +695,7 @@ def create_html_report(
     
     # Executive summary
     executive_summary = f"""
-    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+    <div class="exec-summary">
         <h2>Executive Summary - {report_date}</h2>
         <p style="font-size: 16px; line-height: 1.6;">
             The S&P 500 is currently at {format_number(snapshot['sp500']['value'])} 
@@ -900,20 +900,99 @@ def create_html_report(
         </div>
         """
     
-    # CSS styling
+    # CSS styling - Gruvbox Dark theme with JetBrains Mono font
     css = """
     <style>
-        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
-        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
-        h2 { color: #34495e; margin-top: 30px; }
-        h3 { color: #7f8c8d; }
-        table { border: 1px solid #ddd; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #3498db; color: white; }
-        tr:nth-child(even) { background-color: #f2f2f2; }
-        .signal-red { color: #e74c3c; font-weight: bold; }
-        .signal-yellow { color: #f39c12; font-weight: bold; }
-        .signal-green { color: #27ae60; font-weight: bold; }
+        @font-face {
+            font-family: 'JetBrains Mono';
+            src: url('/Users/bengui/Downloads/JetBrainsMono-2.304/fonts/ttf/JetBrainsMono-Regular.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'JetBrains Mono';
+            src: url('/Users/bengui/Downloads/JetBrainsMono-2.304/fonts/ttf/JetBrainsMono-Bold.ttf') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #282828;
+            color: #ebdbb2;
+        }
+        h1 {
+            color: #fabd2f;
+            border-bottom: 2px solid #83a598;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #b8bb26;
+            margin-top: 30px;
+            border-bottom: 1px solid #504945;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #83a598;
+        }
+        p, .em { color: #d4be98; }
+        table {
+            border: 1px solid #504945;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #504945;
+        }
+        th {
+            background-color: #458588;
+            color: #282828;
+            font-weight: bold;
+        }
+        tr:nth-child(even) { background-color: #3c3836; }
+        tr:nth-child(odd) { background-color: #282828; }
+        tr:hover { background-color: #504945; }
+        
+        /* Signal colors - use gruvbox palette */
+        .signal-red { color: #fb4934; font-weight: bold; }
+        .signal-yellow { color: #fabd2f; font-weight: bold; }
+        .signal-green { color: #b8bb26; font-weight: bold; }
+        
+        /* Executive summary styling */
+        .exec-summary {
+            background-color: #3c3836;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #504945;
+        }
+        
+        /* Visualizations */
+        .viz-container {
+            background-color: #3c3836;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border: 1px solid #504945;
+        }
+        
+        /* Legend */
+        .legend-box {
+            background-color: #3c3836;
+            margin-top: 40px;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #504945;
+        }
+        
+        .meta { color: #83a598; text-align: center; margin-bottom: 20px; }
+        
+        a { color: #83a598; text-decoration: none; }
+        a:hover { text-decoration: underline; }
     </style>
     """
     
@@ -926,7 +1005,7 @@ def create_html_report(
 </head>
 <body>
     <h1>Macro Economic Financial Report</h1>
-    <p><em>Report Type: {report_type.capitalize()} | Generated: {report_date}</em></p>
+    <p class="meta"><em>Report Type: {report_type.capitalize()} | Generated: {report_date}</em></p>
     
     {executive_summary}
     
@@ -935,13 +1014,15 @@ def create_html_report(
     {macro_table}
     
     <h2>📊 Visualizations</h2>
+    <div class="viz-container">
     {viz_html}
+    </div>
     
-    <div style="margin-top: 40px; padding: 20px; background-color: #f8f9fa; border-radius: 10px;">
+    <div class="legend-box">
         <h3>Legend</h3>
-        <p><span style="color: #e74c3c; font-weight: bold;">🔴</span> = Red (High Risk/Warning) | 
-           <span style="color: #f39c12; font-weight: bold;">🟡</span> = Yellow (Caution) | 
-           <span style="color: #27ae60; font-weight: bold;">🟢</span> = Green (Normal)</p>
+        <p><span class="signal-red">🔴</span> = Red (High Risk/Warning) | 
+           <span class="signal-yellow">🟡</span> = Yellow (Caution) | 
+           <span class="signal-green">🟢</span> = Green (Normal)</p>
     </div>
     
 </body>
