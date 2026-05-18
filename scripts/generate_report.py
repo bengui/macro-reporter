@@ -548,13 +548,23 @@ def create_macro_dashboard() -> dict:
     try:
         bond_spreads = load_from_json("bond_spreads", CUSTOM_DATA_DIR)
         if "spread" in bond_spreads:
-            # Spread is stored in bps, display as bps
             spread = bond_spreads["spread"]
-            # For now, no history available from country_profile, so no previous/change
+            history = bond_spreads.get("history", {})
+            
+            prev_spread = 0
+            change_1m = 0
+            
+            # Get spread history and calculate previous month value
+            spread_obs = history.get("spread", [])
+            if spread_obs and len(spread_obs) >= 2:
+                prev_spread = get_previous_month_value(spread_obs)
+                if prev_spread != 0:
+                    change_1m = ((spread - prev_spread) / abs(prev_spread)) * 100
+            
             dashboard["spain_germany_10y_spread"] = {
                 "value": spread,
-                "previous": 0,
-                "change_1m": 0,
+                "previous": prev_spread,
+                "change_1m": change_1m,
             }
         else:
             dashboard["spain_germany_10y_spread"] = {"value": 0, "previous": 0, "change_1m": 0}
@@ -569,30 +579,86 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     """Create matplotlib visualizations and save as images."""
     visualizations = []
     
+    # Gruvbox Dark color palette
+    GRUVBOX_BG = "#282828"
+    GRUVBOX_FG = "#ebdbb2"
+    GRUVBOX_GRAY = "#504945"
+    GRUVBOX_RED = "#fb4934"
+    GRUVBOX_GREEN = "#b8bb26"
+    GRUVBOX_YELLOW = "#fabd2f"
+    GRUVBOX_BLUE = "#83a598"
+    GRUVBOX_PURPLE = "#d3869b"
+    GRUVBOX_ORANGE = "#fe8019"
+    
     # Create sp500 trend chart
     try:
         sp500 = load_from_csv("sp500")
         # Convert date strings to datetime for proper plotting
         sp500["date"] = pd.to_datetime(sp500["date"])
         fig, ax = plt.subplots(figsize=(10, 4))
-        ax.plot(sp500["date"], sp500["close"], label="S&P 500")
-        ax.set_title("S&P 500 Price Trend (Last 90 Days)")
-        ax.set_xlabel("Date")
-        ax.set_ylabel("Price")
-        ax.legend()
-        ax.grid(True)
+        
+        # Gruvbox styling
+        fig.patch.set_facecolor(GRUVBOX_BG)
+        ax.set_facecolor(GRUVBOX_BG)
+        ax.plot(sp500["date"], sp500["close"], label="S&P 500", color=GRUVBOX_BLUE, linewidth=2)
+        ax.set_title("S&P 500 Price Trend (Last 90 Days)", color=GRUVBOX_FG)
+        ax.set_xlabel("Date", color=GRUVBOX_FG)
+        ax.set_ylabel("Price", color=GRUVBOX_FG)
+        ax.legend(facecolor=GRUVBOX_BG, labelcolor=GRUVBOX_FG)
+        ax.grid(True, color=GRUVBOX_GRAY, alpha=0.3)
+        ax.tick_params(colors=GRUVBOX_FG)
+        ax.spines['bottom'].set_color(GRUVBOX_FG)
+        ax.spines['top'].set_color(GRUVBOX_FG)
+        ax.spines['left'].set_color(GRUVBOX_FG)
+        ax.spines['right'].set_color(GRUVBOX_FG)
+        
         # Show only 1st and 15th of each month on x-axis
         ax.xaxis.set_major_locator(matplotlib.dates.MonthLocator(bymonthday=[1, 15]))
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m-%d'))
         plt.tight_layout()
         
         img_path = REPORTS_DIR / "sp500_trend.png"
-        fig.savefig(img_path, dpi=300, bbox_inches="tight")
+        fig.savefig(img_path, dpi=300, bbox_inches="tight", facecolor=GRUVBOX_BG)
         plt.close(fig)
         visualizations.append({"title": "S&P 500 Trend", "path": str(img_path)})
         logger.info(f"  Created S&P 500 trend chart")
     except Exception as e:
         logger.error(f"  Error creating S&P 500 chart: {e}")
+    
+    # Create STOXX 600 trend chart
+    try:
+        stoxx600 = load_from_csv("stoxx600")
+        # Convert date strings to datetime for proper plotting
+        stoxx600["date"] = pd.to_datetime(stoxx600["date"])
+        fig, ax = plt.subplots(figsize=(10, 4))
+        
+        # Gruvbox styling
+        fig.patch.set_facecolor(GRUVBOX_BG)
+        ax.set_facecolor(GRUVBOX_BG)
+        ax.plot(stoxx600["date"], stoxx600["close"], label="STOXX 600", color=GRUVBOX_GREEN, linewidth=2)
+        ax.set_title("STOXX 600 Price Trend (Last 90 Days)", color=GRUVBOX_FG)
+        ax.set_xlabel("Date", color=GRUVBOX_FG)
+        ax.set_ylabel("Price", color=GRUVBOX_FG)
+        ax.legend(facecolor=GRUVBOX_BG, labelcolor=GRUVBOX_FG)
+        ax.grid(True, color=GRUVBOX_GRAY, alpha=0.3)
+        ax.tick_params(colors=GRUVBOX_FG)
+        ax.spines['bottom'].set_color(GRUVBOX_FG)
+        ax.spines['top'].set_color(GRUVBOX_FG)
+        ax.spines['left'].set_color(GRUVBOX_FG)
+        ax.spines['right'].set_color(GRUVBOX_FG)
+        
+        # Show only 1st and 15th of each month on x-axis
+        ax.xaxis.set_major_locator(matplotlib.dates.MonthLocator(bymonthday=[1, 15]))
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m-%d'))
+        plt.tight_layout()
+        
+        img_path = REPORTS_DIR / "stoxx600_trend.png"
+        fig.savefig(img_path, dpi=300, bbox_inches="tight", facecolor=GRUVBOX_BG)
+        plt.close(fig)
+        visualizations.append({"title": "STOXX 600 Trend", "path": str(img_path)})
+        logger.info(f"  Created STOXX 600 trend chart")
+    except Exception as e:
+        logger.error(f"  Error creating STOXX 600 chart: {e}")
     
     # Create VIX vs Gold chart
     try:
@@ -604,28 +670,39 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         
         fig, ax1 = plt.subplots(figsize=(10, 4))
         
-        color = "tab:blue"
-        ax1.set_xlabel("Date")
-        ax1.set_ylabel("VIX", color=color)
-        ax1.plot(vix["date"], vix["close"], color=color, label="VIX")
-        ax1.tick_params(axis="y", labelcolor=color)
-        ax1.grid(True)
+        # Gruvbox styling
+        fig.patch.set_facecolor(GRUVBOX_BG)
+        ax1.set_facecolor(GRUVBOX_BG)
+        
+        # VIX on left axis - use red for volatility
+        ax1.set_xlabel("Date", color=GRUVBOX_FG)
+        ax1.set_ylabel("VIX", color=GRUVBOX_RED)
+        ax1.plot(vix["date"], vix["close"], color=GRUVBOX_RED, label="VIX", linewidth=2)
+        ax1.tick_params(axis="y", labelcolor=GRUVBOX_RED)
+        ax1.tick_params(axis="x", colors=GRUVBOX_FG)
+        ax1.grid(True, color=GRUVBOX_GRAY, alpha=0.3)
+        
         # Show only 1st and 15th of each month on x-axis
         ax1.xaxis.set_major_locator(matplotlib.dates.MonthLocator(bymonthday=[1, 15]))
         ax1.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m-%d'))
+        ax1.spines['bottom'].set_color(GRUVBOX_FG)
+        ax1.spines['top'].set_color(GRUVBOX_FG)
+        ax1.spines['left'].set_color(GRUVBOX_RED)
+        ax1.spines['right'].set_color(GRUVBOX_FG)
         
+        # Gold on right axis - use yellow for precious metal
         ax2 = ax1.twinx()
-        color = "tab:orange"
-        ax2.set_ylabel("Gold Price", color=color)
-        ax2.plot(gold["date"], gold["close"], color=color, label="Gold")
-        ax2.tick_params(axis="y", labelcolor=color)
+        ax2.set_ylabel("Gold Price", color=GRUVBOX_YELLOW)
+        ax2.plot(gold["date"], gold["close"], color=GRUVBOX_YELLOW, label="Gold", linewidth=2)
+        ax2.tick_params(axis="y", labelcolor=GRUVBOX_YELLOW)
+        ax2.spines['right'].set_color(GRUVBOX_YELLOW)
         
-        fig.suptitle("VIX vs Gold Price")
-        fig.legend(loc="upper left")
+        fig.suptitle("VIX vs Gold Price", color=GRUVBOX_FG)
+        fig.legend(loc="upper left", facecolor=GRUVBOX_BG, labelcolor=GRUVBOX_FG)
         plt.tight_layout()
         
         img_path = REPORTS_DIR / "vix_vs_gold.png"
-        fig.savefig(img_path, dpi=300, bbox_inches="tight")
+        fig.savefig(img_path, dpi=300, bbox_inches="tight", facecolor=GRUVBOX_BG)
         plt.close(fig)
         visualizations.append({"title": "VIX vs Gold", "path": str(img_path)})
         logger.info(f"  Created VIX vs Gold chart")
@@ -803,7 +880,7 @@ def create_html_report(
         return f"<tr><td>{label}</td><td>{format_number(val)}</td><td>{format_percentage(chg)}</td><td>{sig}</td></tr>"
     
     market_table_rows = f"""
-    <tr><th>Metric</th><th>Value</th><th>1M Change</th><th>Signal</th></tr>
+    <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>Signal</th></tr>
     {format_metric('sp500', 'value', 'change_1m')}
     {format_metric('stoxx600', 'value', 'change_1m')}
     {format_metric('msci_world', 'value', 'change_1m')}
@@ -850,10 +927,10 @@ def create_html_report(
         chg = format_percentage(d["change_1m"])
         sig = signals.get(name, "")
         label = macro_labels.get(name, name.replace('_', ' ').title())
-        return f"<tr><td>{label}</td><td>{val}</td><td>{prev}</td><td>{chg}</td><td>{sig}</td></tr>"
+        return f"<tr><td>{label}</td><td>{val}</td><td>{chg}</td><td>{sig}</td></tr>"
     
     macro_table_rows = f"""
-    <tr><th>Indicator</th><th>Value</th><th>Previous</th><th>1M Change</th><th>Signal</th></tr>
+    <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>Signal</th></tr>
     {format_macro('us_cpi')}
     {format_macro('us_unemployment')}
     {format_macro('us_gdp')}
@@ -943,12 +1020,17 @@ def create_html_report(
             border: 1px solid #504945;
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
         th, td {
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #504945;
         }
+        th:nth-child(1), td:nth-child(1) { width: 40%; }
+        th:nth-child(2), td:nth-child(2) { width: 20%; }
+        th:nth-child(3), td:nth-child(3) { width: 20%; }
+        th:nth-child(4), td:nth-child(4) { width: 20%; }
         th {
             background-color: #458588;
             color: #282828;

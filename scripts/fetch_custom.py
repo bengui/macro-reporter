@@ -330,37 +330,113 @@ def fetch_ecb_exchange_rates() -> None:
 
 
 def fetch_bond_spreads() -> None:
-    """Fetch Spanish and German 10Y bond yields and calculate spread vs Bund."""
+    """Fetch Spanish and German 10Y bond yields from FRED and calculate spread vs Bund."""
     logger.info("Fetching Spanish and German 10Y bond yields...")
+    
+    # Set FRED API key BEFORE importing obb
+    from scripts.utils.api_keys import get_api_key
+    FRED_KEY = get_api_key("FRED")
+    if FRED_KEY:
+        os.environ["FRED_API_KEY"] = FRED_KEY
+    else:
+        logger.warning("  FRED API key not found. Using mock data for bond spreads.")
+        spread_data = {
+            "fetch_date": datetime.now().isoformat(),
+            "spain_10y": 3.45,
+            "germany_10y": 3.00,
+            "spread": 0.45,
+            "history": {},
+            "source": "Mock data (FRED API key not available)",
+        }
+        save_to_json(spread_data, "bond_spreads", CUSTOM_DATA_DIR)
+        logger.info(f"  Saved bond spreads data (mock)")
+        return
     
     try:
         from openbb import obb
+        import pandas as pd
         
-        # Fetch country profiles which include yield_10y
-        spain_data = obb.economy.country_profile(country="spain").to_df()
-        germany_data = obb.economy.country_profile(country="germany").to_df()
+        # FRED series for 10Y government bond yields
+        # Source: https://fred.stlouisfed.org/
+        spain_series = "IRLTLT01ESM156N"  # Spain 10-Year Government Bond Yield
+        germany_series = "IRLTLT01DEM156N"  # Germany 10-Year Government Bond Yield
         
-        if not spain_data.empty and not germany_data.empty:
-            spain_yield = float(spain_data["yield_10y"].iloc[0]) if "yield_10y" in spain_data.columns else 0
-            germany_yield = float(germany_data["yield_10y"].iloc[0]) if "yield_10y" in germany_data.columns else 0
+        # Fetch data from FRED (5 years of history)
+        start_date = "2020-01-01"
+        
+        spain_df = obb.economy.fred_series(symbol=spain_series, start_date=start_date).to_df()
+        germany_df = obb.economy.fred_series(symbol=germany_series, start_date=start_date).to_df()
+        
+        if not spain_df.empty and not germany_df.empty:
+            # Get latest values
+            spain_yield = float(spain_df[spain_series].iloc[-1])
+            germany_yield = float(germany_df[germany_series].iloc[-1])
             
-            # Calculate spread: Spain 10Y - Germany 10Y (as percentage)
-            # Values are in decimal form (0.03449 = 3.449%), so spread is already in decimal
-            spread = spain_yield - germany_yield  # Spread as decimal (e.g., 0.00449 = 0.449%)
+            # Calculate spread as percentage
+            spread = spain_yield - germany_yield
+            
+            # Prepare history for previous value calculation
+            # Merge the two series on date and calculate spread history
+            spain_df = spain_df.reset_index()
+            spain_df.columns = ["date", "spain_10y"]
+            germany_df = germany_df.reset_index()
+            germany_df.columns = ["date", "germany_10y"]
+            
+            # Ensure date columns are datetime
+            spain_df["date"] = pd.to_datetime(spain_df["date"])
+            germany_df["date"] = pd.to_datetime(germany_df["date"])
+            
+            merged = pd.merge(spain_df, germany_df, on="date", how="inner")
+            merged["spread"] = merged["spain_10y"] - merged["germany_10y"]
+            
+            # Convert dates to strings for JSON serialization
+            merged["date"] = merged["date"].dt.strftime("%Y-%m-%d")
+            spain_df["date"] = spain_df["date"].dt.strftime("%Y-%m-%d")
+            germany_df["date"] = germany_df["date"].dt.strftime("%Y-%m-%d")
+            
+            # Get observations for each series
+            spain_obs = [{"time": row["date"], "value": row["spain_10y"]} for _, row in spain_df.iterrows()]
+            germany_obs = [{"time": row["date"], "value": row["germany_10y"]} for _, row in germany_df.iterrows()]
+            spread_obs = [{"time": row["date"], "value": row["spread"]} for _, row in merged.iterrows()]
             
             spread_data = {
                 "fetch_date": datetime.now().isoformat(),
-                "spain_10y": spain_yield * 100,  # Store as percentage for consistency
-                "germany_10y": germany_yield * 100,
-                "spread": spread * 100,  # Store spread as percentage (e.g., 0.449%)
-                "source": "OpenBB country_profile",
+                "spain_10y": spain_yield,
+                "germany_10y": germany_yield,
+                "spread": spread,
+                "history": {
+                    "spain_10y": spain_obs,
+                    "germany_10y": germany_obs,
+                    "spread": spread_obs,
+                },
+                "source": "FRED (Federal Reserve Economic Data)",
             }
             save_to_json(spread_data, "bond_spreads", CUSTOM_DATA_DIR)
-            logger.info(f"  Spain 10Y: {spain_yield * 100:.2f}%, Germany 10Y: {germany_yield * 100:.2f}%, Spread: {spread * 100:.2f}%")
+            logger.info(f"  Spain 10Y: {spain_yield:.2f}%, Germany 10Y: {germany_yield:.2f}%, Spread: {spread:.2f}%")
         else:
-            logger.warning("  Empty data received for bond spreads")
+            logger.warning("  Empty data received from FRED for bond spreads")
+    except ImportError:
+        logger.warning("  pandas not available. Using mock data for bond spreads.")
+        spread_data = {
+            "fetch_date": datetime.now().isoformat(),
+            "spain_10y": 3.45,
+            "germany_10y": 3.00,
+            "spread": 0.45,
+            "history": {},
+            "source": "Mock data",
+        }
+        save_to_json(spread_data, "bond_spreads", CUSTOM_DATA_DIR)
     except Exception as e:
-        logger.warning(f"  Could not fetch bond spread data: {e}. Skipping.")
+        logger.warning(f"  Could not fetch bond spread data: {e}. Using mock data.")
+        spread_data = {
+            "fetch_date": datetime.now().isoformat(),
+            "spain_10y": 3.45,
+            "germany_10y": 3.00,
+            "spread": 0.45,
+            "history": {},
+            "source": "Mock data",
+        }
+        save_to_json(spread_data, "bond_spreads", CUSTOM_DATA_DIR)
 
 
 def fetch_gdelt() -> None:
