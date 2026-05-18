@@ -33,6 +33,7 @@ from scripts.utils.formatting import (
     format_date,
     format_change,
     get_traffic_light_signal,
+    get_traffic_light_signal_higher_better,
 )
 from scripts.utils.logging import setup_logging
 
@@ -54,6 +55,7 @@ THRESHOLDS = {
     "euribor_12m_estr_spread": {"red": 1.0, "yellow": 0.5},  # Euribor 12M - ECB €STR spread (>100bps=red, 50-100bps=yellow)
     "spain_germany_10y_spread": {"red": 2.0, "yellow": 1.0},  # Spain-Germany 10Y spread (>2%=red, 1-2%=yellow)
     "gdp_growth": {"red": -1.0, "yellow": 1.5},  # GDP growth rate
+    "gdp_yoy": {"red": -1.0, "yellow": 1.5},  # YoY GDP growth rate
     "ecb_yield": {"red": 5.0, "yellow": 3.5},  # ECB bond yields
     "ecb_rates": {"red": 3.0, "yellow": 2.0},  # ECB policy/reference rates
 }
@@ -365,6 +367,26 @@ def create_macro_dashboard() -> dict:
     except Exception as e:
         logger.warning(f"Error loading US GDP Real: {e}")
         dashboard["us_gdp_real"] = {"value": 0, "previous": 0, "change_1m": 0}
+    
+    # GDP YoY (Year-over-Year growth rate) - from country_profile
+    gdp_yoy_countries = ["us_gdp_yoy", "eu_gdp_yoy", "spain_gdp_yoy"]
+    for name in gdp_yoy_countries:
+        try:
+            gdp_data = load_from_csv(name)
+            if not gdp_data.empty:
+                # The CSV has a gdp_yoy column with the value
+                latest = get_latest_value(gdp_data, "gdp_yoy") * 100  # Convert to percentage
+                # For YoY data, we don't have history in the current format
+                dashboard[name] = {
+                    "value": latest,
+                    "previous": 0,
+                    "change_1m": 0,
+                }
+            else:
+                dashboard[name] = {"value": 0, "previous": 0, "change_1m": 0}
+        except Exception as e:
+            logger.warning(f"Error loading {name}: {e}")
+            dashboard[name] = {"value": 0, "previous": 0, "change_1m": 0}
     
     # ECB Yield Curve (from custom data)
     try:
@@ -744,6 +766,9 @@ def create_html_report(
         "spain_germany_10y_spread": get_traffic_light_signal(dashboard.get("spain_germany_10y_spread", {}).get("value", 0), THRESHOLDS["spain_germany_10y_spread"]),
         "us_gdp": get_traffic_light_signal(dashboard["us_gdp"]["change_1m"], THRESHOLDS["gdp_growth"]),
         "us_gdp_real": get_traffic_light_signal(dashboard["us_gdp_real"]["change_1m"], THRESHOLDS["gdp_growth"]),
+        "us_gdp_yoy": get_traffic_light_signal_higher_better(dashboard.get("us_gdp_yoy", {}).get("value", 0), THRESHOLDS["gdp_yoy"]),
+        "eu_gdp_yoy": get_traffic_light_signal_higher_better(dashboard.get("eu_gdp_yoy", {}).get("value", 0), THRESHOLDS["gdp_yoy"]),
+        "spain_gdp_yoy": get_traffic_light_signal_higher_better(dashboard.get("spain_gdp_yoy", {}).get("value", 0), THRESHOLDS["gdp_yoy"]),
     }
     
     # Add ECB data signals if available
@@ -763,6 +788,9 @@ def create_html_report(
         "spain_unemployment": "Spain Unemployment",
         "us_gdp": "US GDP (Nominal)",
         "us_gdp_real": "US GDP (Real)",
+        "us_gdp_yoy": "US GDP YoY",
+        "eu_gdp_yoy": "EU GDP YoY",
+        "spain_gdp_yoy": "Spain GDP YoY",
         "treasury_10y": "US 10Y Treasury",
         "euribor_12m_estr_spread": "Euribor 12M - €STR Spread",
         "spain_germany_10y_spread": "Spain-Germany 10Y Spread",
@@ -790,7 +818,9 @@ def create_html_report(
             ({signals['us_unemployment']}). 
             US GDP (Nominal) at {format_number(dashboard['us_gdp']['value'])} 
             ({signals['us_gdp']}), Real GDP at {format_number(dashboard['us_gdp_real']['value'])} 
-            ({signals['us_gdp_real']}).
+            ({signals['us_gdp_real']}). 
+            US GDP YoY growth at {format_percentage(dashboard.get('us_gdp_yoy', {}).get('value', 0))} 
+            ({signals.get('us_gdp_yoy', '')}).
         </p>
         """
     
@@ -800,10 +830,12 @@ def create_html_report(
         <p style="font-size: 16px; line-height: 1.6; margin-top: 10px;">
             EU CPI at {format_percentage(dashboard['eu_cpi']['value'])} 
             ({signals.get('eu_cpi', '')}), EU Unemployment at {format_percentage(dashboard['eu_unemployment']['value'])} 
-            ({signals.get('eu_unemployment', '')}). 
+            ({signals.get('eu_unemployment', '')}), EU GDP YoY at {format_percentage(dashboard.get('eu_gdp_yoy', {}).get('value', 0))} 
+            ({signals.get('eu_gdp_yoy', '')}). 
             Spain CPI at {format_percentage(dashboard['spain_cpi']['value'])} 
             ({signals.get('spain_cpi', '')}), Spain Unemployment at {format_percentage(dashboard['spain_unemployment']['value'])} 
-            ({signals.get('spain_unemployment', '')}).
+            ({signals.get('spain_unemployment', '')}), Spain GDP YoY at {format_percentage(dashboard.get('spain_gdp_yoy', {}).get('value', 0))} 
+            ({signals.get('spain_gdp_yoy', '')}).
         </p>
         """
     
@@ -911,6 +943,9 @@ def create_html_report(
         "spain_unemployment": True,
         "us_gdp": False,
         "us_gdp_real": False,
+        "us_gdp_yoy": True,
+        "eu_gdp_yoy": True,
+        "spain_gdp_yoy": True,
         "treasury_10y": True,
         "euribor_12m_estr_spread": True,
         "spain_germany_10y_spread": True,
@@ -950,7 +985,7 @@ def create_html_report(
     if "euribor_12m_estr_spread" in dashboard:
         macro_table_rows += format_macro('euribor_12m_estr_spread')
     
-    # Add EU and Spain data if available (grouped together)
+    # Add EU and Spain data if available (grouped together) - excluding GDP YoY
     eu_spain_keys = [
         'eu_cpi', 'eu_unemployment',
         'spain_cpi', 'spain_unemployment',
@@ -964,6 +999,31 @@ def create_html_report(
     <h2>🏛️ Macroeconomic Dashboard</h2>
     <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
         {macro_table_rows}
+    </table>
+    """
+    
+    # GDP YoY separate table (no 1M Change column)
+    def format_gdp_yoy(name):
+        """Helper to format a GDP YoY row with only value and signal."""
+        d = dashboard[name]
+        is_pct = macro_value_pct.get(name, True)
+        val = format_percentage(d["value"]) if is_pct else format_number(d["value"])
+        sig = signals.get(name, "")
+        label = macro_labels.get(name, name.replace('_', ' ').title())
+        return f"<tr><td>{label}</td><td>{val}</td><td>{sig}</td></tr>"
+    
+    gdp_yoy_rows = f"""
+    <tr><th>Indicator</th><th>Value</th><th>Signal</th></tr>
+    """
+    gdp_yoy_keys = ['us_gdp_yoy', 'eu_gdp_yoy', 'spain_gdp_yoy']
+    for key in gdp_yoy_keys:
+        if key in dashboard and dashboard[key].get('value', 0) > 0:
+            gdp_yoy_rows += format_gdp_yoy(key)
+    
+    gdp_yoy_table = f"""
+    <h2>📊 GDP Year-over-Year Growth</h2>
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+        {gdp_yoy_rows}
     </table>
     """
     
@@ -1027,10 +1087,30 @@ def create_html_report(
             text-align: left;
             border-bottom: 1px solid #504945;
         }
-        th:nth-child(1), td:nth-child(1) { width: 40%; }
-        th:nth-child(2), td:nth-child(2) { width: 20%; }
-        th:nth-child(3), td:nth-child(3) { width: 20%; }
-        th:nth-child(4), td:nth-child(4) { width: 20%; }
+        /* 4-column table (Market Snapshot, Macro Dashboard) */
+        table:nth-of-type(1) th:nth-child(1),
+        table:nth-of-type(1) td:nth-child(1),
+        table:nth-of-type(2) th:nth-child(1),
+        table:nth-of-type(2) td:nth-child(1) { width: 40%; }
+        table:nth-of-type(1) th:nth-child(2),
+        table:nth-of-type(1) td:nth-child(2),
+        table:nth-of-type(2) th:nth-child(2),
+        table:nth-of-type(2) td:nth-child(2) { width: 20%; }
+        table:nth-of-type(1) th:nth-child(3),
+        table:nth-of-type(1) td:nth-child(3),
+        table:nth-of-type(2) th:nth-child(3),
+        table:nth-of-type(2) td:nth-child(3) { width: 20%; }
+        table:nth-of-type(1) th:nth-child(4),
+        table:nth-of-type(1) td:nth-child(4),
+        table:nth-of-type(2) th:nth-child(4),
+        table:nth-of-type(2) td:nth-child(4) { width: 20%; }
+        /* 3-column table (GDP YoY) */
+        table:nth-of-type(3) th:nth-child(1),
+        table:nth-of-type(3) td:nth-child(1) { width: 50%; }
+        table:nth-of-type(3) th:nth-child(2),
+        table:nth-of-type(3) td:nth-child(2) { width: 25%; }
+        table:nth-of-type(3) th:nth-child(3),
+        table:nth-of-type(3) td:nth-child(3) { width: 25%; }
         th {
             background-color: #458588;
             color: #282828;
@@ -1094,6 +1174,8 @@ def create_html_report(
     {market_table}
     
     {macro_table}
+    
+    {gdp_yoy_table}
     
     <h2>📊 Visualizations</h2>
     <div class="viz-container">

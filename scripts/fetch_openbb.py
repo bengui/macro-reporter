@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+import pandas as pd
+
 # Add parent directory to path for imports - MUST BE BEFORE other imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -283,6 +285,34 @@ def fetch_govt_debt_to_gdp() -> None:
             logger.warning(f"  Could not fetch debt to GDP for {country}: {e}")
 
 
+def fetch_gdp_yoy() -> None:
+    """Fetch Year-over-Year GDP growth rates for US, EU, and Spain."""
+    logger.info("Fetching YoY GDP growth rates...")
+    
+    gdp_countries = {
+        "united_states": "us_gdp_yoy",
+        "euro_area": "eu_gdp_yoy",
+        "spain": "spain_gdp_yoy",
+    }
+    
+    for country, name in gdp_countries.items():
+        try:
+            logger.info(f"  Fetching {name}...")
+            data = obb.economy.country_profile(country=country).to_df()
+            
+            if data.empty or "gdp_yoy" not in data.columns:
+                logger.warning(f"  No gdp_yoy data for {country}")
+                continue
+            
+            # Extract just the gdp_yoy value and save as a simple DataFrame
+            gdp_value = data["gdp_yoy"].iloc[0]
+            save_df = pd.DataFrame({"gdp_yoy": [gdp_value]})
+            save_to_csv(save_df, name, OPENBB_DATA_DIR)
+            logger.info(f"  Saved {name}: {gdp_value * 100:.2f}%")
+        except Exception as e:
+            logger.warning(f"  Could not fetch GDP YoY for {country}: {e}")
+
+
 def fetch_news() -> None:
     """Fetch financial news - requires API keys, skip for now."""
     logger.info("Fetching news...")
@@ -307,6 +337,7 @@ def fetch_all() -> None:
     fetch_macroeconomics()
     fetch_fred_indicators()
     fetch_govt_debt_to_gdp()
+    fetch_gdp_yoy()
     fetch_bonds()
     fetch_news()
     

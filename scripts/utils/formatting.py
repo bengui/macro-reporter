@@ -130,3 +130,27 @@ def get_traffic_light_signal(
         return "🟡"
     else:
         return "🟢"
+
+
+def get_traffic_light_signal_higher_better(
+    value: float,
+    thresholds: dict[str, float],
+) -> str:
+    """
+    Get traffic light signal for metrics where higher is better (e.g., GDP growth).
+
+    Args:
+        value: Value to check
+        thresholds: Dictionary with 'red' and 'yellow' keys.
+                   red is the lower threshold (values <= red are worst).
+                   yellow is the middle threshold (values <= yellow are caution).
+
+    Returns:
+        Traffic light emoji: 🟢 (green), 🟡 (yellow), 🔴 (red)
+    """
+    if value >= thresholds.get("yellow", float("inf")):
+        return "🟢"
+    elif value >= thresholds.get("red", float("-inf")):
+        return "🟡"
+    else:
+        return "🔴"
