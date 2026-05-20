@@ -217,10 +217,11 @@ def create_market_snapshot() -> dict:
             snapshot[name] = {
                 "value": get_latest_value(df, "close"),
                 "change_1m": calculate_change(df, "close", 30),
+                "change_1y": calculate_change(df, "close", 365),
             }
         except Exception as e:
             logger.warning(f"Error loading {name.replace('_', ' ').title()}: {e}")
-            snapshot[name] = {"value": 0, "change_1m": 0}
+            snapshot[name] = {"value": 0, "change_1m": 0, "change_1y": 0}
     
     # Forex
     forex = ["usd_eur", "usd_cny"]
@@ -230,10 +231,11 @@ def create_market_snapshot() -> dict:
             snapshot[name] = {
                 "value": get_latest_value(df, "close"),
                 "change_1m": calculate_change(df, "close", 30),
+                "change_1y": calculate_change(df, "close", 365),
             }
         except Exception as e:
             logger.warning(f"Error loading {name.upper()}: {e}")
-            snapshot[name] = {"value": 0, "change_1m": 0}
+            snapshot[name] = {"value": 0, "change_1m": 0, "change_1y": 0}
     
     return snapshot
 
@@ -1010,28 +1012,29 @@ def create_html_report(
         "usd_cny": "USD/CNY",
     }
     
-    def format_metric(name, value_key, change_key="change_1m", signal_key=None):
+    def format_metric(name, value_key, change_1m_key="change_1m", change_1y_key="change_1y", signal_key=None):
         """Helper to format a metric row."""
         val = snapshot[name][value_key]
-        chg = snapshot[name].get(change_key, 0)
+        chg_1m = snapshot[name].get(change_1m_key, 0)
+        chg_1y = snapshot[name].get(change_1y_key, 0)
         sig = signals.get(signal_key or name, "")
         label = metric_labels.get(name, name.replace('_', ' ').title())
         desc = indicator_descriptions.get(name, "")
         tooltip_html = f'<span class="tooltiptext">{desc}</span>' if desc else ''
-        return f'<tr class="tooltip-row"><td>{label}{tooltip_html}</td><td>{format_number(val)}</td><td>{format_percentage(chg)}</td><td>{sig}</td></tr>'
+        return f'<tr class="tooltip-row"><td>{label}{tooltip_html}</td><td>{format_number(val)}</td><td>{format_percentage(chg_1m)}</td><td>{format_percentage(chg_1y)}</td><td>{sig}</td></tr>'
     
     market_table_rows = f"""
-    <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>Signal</th></tr>
-    {format_metric('sp500', 'value', 'change_1m')}
-    {format_metric('stoxx600', 'value', 'change_1m')}
-    {format_metric('msci_world', 'value', 'change_1m')}
-    {format_metric('vix', 'value', 'change_1m')}
-    {format_metric('gold', 'value', 'change_1m')}
-    {format_metric('brent_crude', 'value', 'change_1m')}
-    {format_metric('copper', 'value', 'change_1m')}
-    {format_metric('wheat', 'value', 'change_1m')}
-    {format_metric('usd_eur', 'value', 'change_1m')}
-    {format_metric('usd_cny', 'value', 'change_1m')}
+    <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>1Y Change</th><th>Signal</th></tr>
+    {format_metric('sp500', 'value', 'change_1m', 'change_1y')}
+    {format_metric('stoxx600', 'value', 'change_1m', 'change_1y')}
+    {format_metric('msci_world', 'value', 'change_1m', 'change_1y')}
+    {format_metric('vix', 'value', 'change_1m', 'change_1y')}
+    {format_metric('gold', 'value', 'change_1m', 'change_1y')}
+    {format_metric('brent_crude', 'value', 'change_1m', 'change_1y')}
+    {format_metric('copper', 'value', 'change_1m', 'change_1y')}
+    {format_metric('wheat', 'value', 'change_1m', 'change_1y')}
+    {format_metric('usd_eur', 'value', 'change_1m', 'change_1y')}
+    {format_metric('usd_cny', 'value', 'change_1m', 'change_1y')}
     """
     
     market_table = f"""
@@ -1198,21 +1201,24 @@ def create_html_report(
             text-align: left;
             border-bottom: 1px solid #504945;
         }
-        /* 4-column table (Market Snapshot, Macro Dashboard) */
+        /* 5-column table (Market Snapshot) */
         table:nth-of-type(1) th:nth-child(1),
-        table:nth-of-type(1) td:nth-child(1),
+        table:nth-of-type(1) td:nth-child(1) { width: 30%; }
+        table:nth-of-type(1) th:nth-child(2),
+        table:nth-of-type(1) td:nth-child(2) { width: 20%; }
+        table:nth-of-type(1) th:nth-child(3),
+        table:nth-of-type(1) td:nth-child(3) { width: 15%; }
+        table:nth-of-type(1) th:nth-child(4),
+        table:nth-of-type(1) td:nth-child(4) { width: 15%; }
+        table:nth-of-type(1) th:nth-child(5),
+        table:nth-of-type(1) td:nth-child(5) { width: 20%; }
+        /* 4-column table (Macroeconomic Dashboard) */
         table:nth-of-type(2) th:nth-child(1),
         table:nth-of-type(2) td:nth-child(1) { width: 40%; }
-        table:nth-of-type(1) th:nth-child(2),
-        table:nth-of-type(1) td:nth-child(2),
         table:nth-of-type(2) th:nth-child(2),
         table:nth-of-type(2) td:nth-child(2) { width: 20%; }
-        table:nth-of-type(1) th:nth-child(3),
-        table:nth-of-type(1) td:nth-child(3),
         table:nth-of-type(2) th:nth-child(3),
         table:nth-of-type(2) td:nth-child(3) { width: 20%; }
-        table:nth-of-type(1) th:nth-child(4),
-        table:nth-of-type(1) td:nth-child(4),
         table:nth-of-type(2) th:nth-child(4),
         table:nth-of-type(2) td:nth-child(4) { width: 20%; }
         /* 3-column table (GDP YoY) */
