@@ -612,18 +612,22 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     GRUVBOX_PURPLE = "#d3869b"
     GRUVBOX_ORANGE = "#fe8019"
     
-    # Create sp500 trend chart
+    # Create sp500 trend chart (365 days)
     try:
         sp500 = load_from_csv("sp500")
         # Convert date strings to datetime for proper plotting
         sp500["date"] = pd.to_datetime(sp500["date"])
+        # Filter to last 365 days
+        cutoff = datetime.now() - timedelta(days=365)
+        sp500 = sp500[sp500["date"] >= cutoff]
+        
         fig, ax = plt.subplots(figsize=(10, 4))
         
         # Gruvbox styling
         fig.patch.set_facecolor(GRUVBOX_BG)
         ax.set_facecolor(GRUVBOX_BG)
         ax.plot(sp500["date"], sp500["close"], label="S&P 500", color=GRUVBOX_BLUE, linewidth=2)
-        ax.set_title("S&P 500 Price Trend (Last 90 Days)", color=GRUVBOX_FG)
+        ax.set_title("S&P 500 Price Trend (1 Year)", color=GRUVBOX_FG)
         ax.set_xlabel("Date", color=GRUVBOX_FG)
         ax.set_ylabel("Price", color=GRUVBOX_FG)
         ax.legend(facecolor=GRUVBOX_BG, labelcolor=GRUVBOX_FG)
@@ -634,9 +638,9 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         ax.spines['left'].set_color(GRUVBOX_FG)
         ax.spines['right'].set_color(GRUVBOX_FG)
         
-        # Show only 1st and 15th of each month on x-axis
-        ax.xaxis.set_major_locator(matplotlib.dates.MonthLocator(bymonthday=[1, 15]))
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m-%d'))
+        # Show one label per month
+        ax.xaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m'))
         plt.tight_layout()
         
         img_path = REPORTS_DIR / "sp500_trend.png"
@@ -647,18 +651,22 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     except Exception as e:
         logger.error(f"  Error creating S&P 500 chart: {e}")
     
-    # Create STOXX 600 trend chart
+    # Create STOXX 600 trend chart (365 days)
     try:
         stoxx600 = load_from_csv("stoxx600")
         # Convert date strings to datetime for proper plotting
         stoxx600["date"] = pd.to_datetime(stoxx600["date"])
+        # Filter to last 365 days
+        cutoff = datetime.now() - timedelta(days=365)
+        stoxx600 = stoxx600[stoxx600["date"] >= cutoff]
+        
         fig, ax = plt.subplots(figsize=(10, 4))
         
         # Gruvbox styling
         fig.patch.set_facecolor(GRUVBOX_BG)
         ax.set_facecolor(GRUVBOX_BG)
         ax.plot(stoxx600["date"], stoxx600["close"], label="STOXX 600", color=GRUVBOX_GREEN, linewidth=2)
-        ax.set_title("STOXX 600 Price Trend (Last 90 Days)", color=GRUVBOX_FG)
+        ax.set_title("STOXX 600 Price Trend (1 Year)", color=GRUVBOX_FG)
         ax.set_xlabel("Date", color=GRUVBOX_FG)
         ax.set_ylabel("Price", color=GRUVBOX_FG)
         ax.legend(facecolor=GRUVBOX_BG, labelcolor=GRUVBOX_FG)
@@ -669,9 +677,9 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         ax.spines['left'].set_color(GRUVBOX_FG)
         ax.spines['right'].set_color(GRUVBOX_FG)
         
-        # Show only 1st and 15th of each month on x-axis
-        ax.xaxis.set_major_locator(matplotlib.dates.MonthLocator(bymonthday=[1, 15]))
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m-%d'))
+        # Show one label per month
+        ax.xaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
+        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m'))
         plt.tight_layout()
         
         img_path = REPORTS_DIR / "stoxx600_trend.png"
@@ -682,13 +690,17 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     except Exception as e:
         logger.error(f"  Error creating STOXX 600 chart: {e}")
     
-    # Create VIX vs Gold chart
+    # Create VIX vs Gold chart (365 days)
     try:
         vix = load_from_csv("vix")
         gold = load_from_csv("gold")
         # Convert date strings to datetime for proper plotting
         vix["date"] = pd.to_datetime(vix["date"])
         gold["date"] = pd.to_datetime(gold["date"])
+        # Filter to last 365 days
+        cutoff = datetime.now() - timedelta(days=365)
+        vix = vix[vix["date"] >= cutoff]
+        gold = gold[gold["date"] >= cutoff]
         
         fig, ax1 = plt.subplots(figsize=(10, 4))
         
@@ -704,9 +716,9 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         ax1.tick_params(axis="x", colors=GRUVBOX_FG)
         ax1.grid(True, color=GRUVBOX_GRAY, alpha=0.3)
         
-        # Show only 1st and 15th of each month on x-axis
-        ax1.xaxis.set_major_locator(matplotlib.dates.MonthLocator(bymonthday=[1, 15]))
-        ax1.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m-%d'))
+        # Show one label per month
+        ax1.xaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
+        ax1.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m'))
         ax1.spines['bottom'].set_color(GRUVBOX_FG)
         ax1.spines['top'].set_color(GRUVBOX_FG)
         ax1.spines['left'].set_color(GRUVBOX_RED)
@@ -719,7 +731,7 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         ax2.tick_params(axis="y", labelcolor=GRUVBOX_YELLOW)
         ax2.spines['right'].set_color(GRUVBOX_YELLOW)
         
-        fig.suptitle("VIX vs Gold Price", color=GRUVBOX_FG)
+        fig.suptitle("VIX vs Gold Price (1 Year)", color=GRUVBOX_FG)
         fig.legend(loc="upper left", facecolor=GRUVBOX_BG, labelcolor=GRUVBOX_FG)
         plt.tight_layout()
         
@@ -775,7 +787,7 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
                     fig.patch.set_facecolor(GRUVBOX_BG)
                     ax.set_facecolor(GRUVBOX_BG)
                     ax.plot(merged["date"], merged["spread"], label="Euribor 12M - €STR", color=GRUVBOX_PURPLE, linewidth=2)
-                    ax.set_title("Euribor 12M - ECB €STR Spread (Last 365 Days)", color=GRUVBOX_FG)
+                    ax.set_title("Euribor 12M - ECB €STR Spread (1 Year)", color=GRUVBOX_FG)
                     ax.set_xlabel("Date", color=GRUVBOX_FG)
                     ax.set_ylabel("Spread (bps)", color=GRUVBOX_FG)
                     ax.legend(facecolor=GRUVBOX_BG, labelcolor=GRUVBOX_FG)
