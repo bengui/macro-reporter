@@ -57,7 +57,7 @@ if GDELT_KEY:
 
 
 # Configuration
-START_DATE = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+START_DATE = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 
 # Market indices symbols - using equity.price.historical which works without API keys
 MARKET_INDICES = {
