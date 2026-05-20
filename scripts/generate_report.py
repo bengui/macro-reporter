@@ -816,9 +816,6 @@ def create_html_report(
             US inflation (CPI) is at {format_percentage(dashboard['us_cpi']['value'])} 
             ({signals['us_cpi']}), while the unemployment rate stands at {format_percentage(dashboard['us_unemployment']['value'])} 
             ({signals['us_unemployment']}). 
-            US GDP (Nominal) at {format_number(dashboard['us_gdp']['value'])} 
-            ({signals['us_gdp']}), Real GDP at {format_number(dashboard['us_gdp_real']['value'])} 
-            ({signals['us_gdp_real']}). 
             US GDP YoY growth at {format_percentage(dashboard.get('us_gdp_yoy', {}).get('value', 0))} 
             ({signals.get('us_gdp_yoy', '')}).
         </p>
@@ -968,8 +965,6 @@ def create_html_report(
     <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>Signal</th></tr>
     {format_macro('us_cpi')}
     {format_macro('us_unemployment')}
-    {format_macro('us_gdp')}
-    {format_macro('us_gdp_real')}
     {format_macro('treasury_10y')}
     """
     
