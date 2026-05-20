@@ -866,6 +866,36 @@ def create_html_report(
         "ecb_yield_10y": "ECB 10Y Yield",
     }
     
+    # Indicator descriptions for tooltips
+    indicator_descriptions = {
+        "us_cpi": "US Consumer Price Index (CPI) - Monthly inflation rate measuring the average change over time in the prices paid by consumers for goods and services. Source: US Bureau of Labor Statistics.",
+        "us_unemployment": "US Unemployment Rate - Percentage of the labor force without work but available for and seeking employment. Source: US Bureau of Labor Statistics.",
+        "eu_cpi": "Euro Area Consumer Price Index (CPI) - Monthly inflation rate for the euro area. Source: Eurostat via ECB.",
+        "eu_unemployment": "Euro Area Unemployment Rate - Percentage of the labor force without work. Source: Eurostat.",
+        "spain_cpi": "Spain Consumer Price Index (CPI) - Monthly inflation rate. Source: Spain INE.",
+        "spain_unemployment": "Spain Unemployment Rate - Percentage of the labor force without work. Source: Spain INE.",
+        "us_gdp": "US GDP (Nominal) - Gross Domestic Product at current prices in billions. Source: US Bureau of Economic Analysis.",
+        "us_gdp_real": "US GDP (Real) - Gross Domestic Product adjusted for inflation. Source: US Bureau of Economic Analysis.",
+        "us_gdp_yoy": "US GDP Year-over-Year Growth Rate - Percentage change in real GDP compared to the same quarter in the previous year. Source: US Bureau of Economic Analysis.",
+        "eu_gdp_yoy": "EU GDP Year-over-Year Growth Rate - Percentage change in real GDP compared to the same quarter in the previous year. Source: Eurostat.",
+        "spain_gdp_yoy": "Spain GDP Year-over-Year Growth Rate - Percentage change in real GDP compared to the same quarter in the previous year. Source: Spain INE.",
+        "treasury_10y": "US 10-Year Treasury Yield - Interest rate on US government debt maturing in 10 years. Source: US Treasury.",
+        "euribor_12m_estr_spread": "Euribor 12M - €STR Spread - Difference between the 12-month Euribor rate and the ECB's Euro Short-Term Rate (€STR). Measures bank lending premium over ECB policy rate.",
+        "spain_germany_10y_spread": "Spain-Germany 10Y Sovereign Bond Spread - Difference between Spanish and German 10-year government bond yields. Measures sovereign risk premium.",
+        "ecb_yield_1y": "ECB 1-Year Government Bond Yield - Yield on euro area government bonds with 1-year maturity. Source: ECB.",
+        "ecb_yield_10y": "ECB 10-Year Government Bond Yield - Yield on euro area government bonds with 10-year maturity. Source: ECB.",
+        "sp500": "S&P 500 Index - US stock market index tracking 500 large-cap companies. Source: Yahoo Finance.",
+        "stoxx600": "STOXX 600 Index - European stock market index tracking 600 large-cap companies across 17 countries. Source: STOXX.",
+        "msci_world": "MSCI World Index - Global stock market index tracking large and mid-cap companies across developed markets. Source: MSCI.",
+        "vix": "CBOE Volatility Index (VIX) - Market's expectation of 30-day forward-looking volatility for the S&P 500. Known as the 'fear index'.",
+        "gold": "Gold Price - Spot price of gold per ounce. Source: LBMA via Yahoo Finance.",
+        "brent_crude": "Brent Crude Oil Price - Spot price of Brent crude oil. Source: ICE via Yahoo Finance.",
+        "copper": "Copper Price - Spot price of copper. Source: LME via Yahoo Finance.",
+        "wheat": "Wheat Price - Spot price of wheat futures. Source: CBOT via Yahoo Finance.",
+        "usd_eur": "USD/EUR Exchange Rate - US Dollar to Euro exchange rate. Source: ECB.",
+        "usd_cny": "USD/CNY Exchange Rate - US Dollar to Chinese Yuan exchange rate. Source: ECB.",
+    }
+    
     # Executive summary
     executive_summary = f"""
     <div class="exec-summary">
@@ -974,7 +1004,9 @@ def create_html_report(
         chg = snapshot[name].get(change_key, 0)
         sig = signals.get(signal_key or name, "")
         label = metric_labels.get(name, name.replace('_', ' ').title())
-        return f"<tr><td>{label}</td><td>{format_number(val)}</td><td>{format_percentage(chg)}</td><td>{sig}</td></tr>"
+        desc = indicator_descriptions.get(name, "")
+        tooltip_html = f'<span class="tooltiptext">{desc}</span>' if desc else ''
+        return f'<tr class="tooltip-row"><td>{label}{tooltip_html}</td><td>{format_number(val)}</td><td>{format_percentage(chg)}</td><td>{sig}</td></tr>'
     
     market_table_rows = f"""
     <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>Signal</th></tr>
@@ -992,7 +1024,7 @@ def create_html_report(
     
     market_table = f"""
     <h2>📈 Market Snapshot</h2>
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; table-layout: fixed;">
         {market_table_rows}
     </table>
     """
@@ -1027,7 +1059,9 @@ def create_html_report(
         chg = format_percentage(d["change_1m"])
         sig = signals.get(name, "")
         label = macro_labels.get(name, name.replace('_', ' ').title())
-        return f"<tr><td>{label}</td><td>{val}</td><td>{chg}</td><td>{sig}</td></tr>"
+        desc = indicator_descriptions.get(name, "")
+        tooltip_html = f'<span class="tooltiptext">{desc}</span>' if desc else ''
+        return f'<tr class="tooltip-row"><td>{label}{tooltip_html}</td><td>{val}</td><td>{chg}</td><td>{sig}</td></tr>'
     
     macro_table_rows = f"""
     <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>Signal</th></tr>
@@ -1060,7 +1094,7 @@ def create_html_report(
     
     macro_table = f"""
     <h2>🏛️ Macroeconomic Dashboard</h2>
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; table-layout: fixed;">
         {macro_table_rows}
     </table>
     """
@@ -1073,7 +1107,9 @@ def create_html_report(
         val = format_percentage(d["value"]) if is_pct else format_number(d["value"])
         sig = signals.get(name, "")
         label = macro_labels.get(name, name.replace('_', ' ').title())
-        return f"<tr><td>{label}</td><td>{val}</td><td>{sig}</td></tr>"
+        desc = indicator_descriptions.get(name, "")
+        tooltip_html = f'<span class="tooltiptext">{desc}</span>' if desc else ''
+        return f'<tr class="tooltip-row"><td>{label}{tooltip_html}</td><td>{val}</td><td>{sig}</td></tr>'
     
     gdp_yoy_rows = f"""
     <tr><th>Indicator</th><th>Value</th><th>Signal</th></tr>
@@ -1085,7 +1121,7 @@ def create_html_report(
     
     gdp_yoy_table = f"""
     <h2>📊 GDP Year-over-Year Growth</h2>
-    <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; table-layout: fixed;">
         {gdp_yoy_rows}
     </table>
     """
@@ -1182,6 +1218,36 @@ def create_html_report(
         tr:nth-child(even) { background-color: #3c3836; }
         tr:nth-child(odd) { background-color: #282828; }
         tr:hover { background-color: #504945; }
+        /* Tooltip styling */
+        .tooltip-row {
+            position: relative;
+        }
+        .tooltip-row td:first-child {
+            position: relative;
+        }
+        .tooltiptext {
+            visibility: hidden;
+            width: 300px;
+            background-color: #3c3836;
+            color: #ebdbb2;
+            text-align: left;
+            border-radius: 5px;
+            border: 1px solid #504945;
+            padding: 10px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .tooltip-row:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
         
         /* Signal colors - use gruvbox palette */
         .signal-red { color: #fb4934; font-weight: bold; }
