@@ -76,7 +76,7 @@ def fetch_ecb_series(
     from datetime import datetime
     
     if start_date:
-        end_date = datetime.now().strftime("%Y-%m")
+        end_date = datetime.now().strftime("%Y-%m-%d")
         params = {
             "format": "csvdata",
             "startPeriod": start_date,
@@ -169,12 +169,10 @@ def fetch_euribor() -> None:
     
     rates = {}
     series_history = {}
-    # Use start date of 6 months ago to get proper data with dates
-    from datetime import datetime, timedelta
-    start_date = (datetime.now() - timedelta(days=180)).strftime("%Y-%m")
     
     for tenor, series_key in euribor_series.items():
-        result = fetch_ecb_series("FM", series_key, start_date=start_date)
+        # Use lastNObservations to get daily data (180 = ~6 months of business days)
+        result = fetch_ecb_series("FM", series_key, start_date=None)
         if result and "value" in result:
             rates[tenor] = result["value"]
             series_history[tenor] = result.get("observations", [])
@@ -225,12 +223,10 @@ def fetch_ecb_yield_curve() -> None:
     
     yields = {}
     series_history = {}
-    # Use start date of 6 months ago to get proper monthly data with dates
-    from datetime import datetime, timedelta
-    start_date = (datetime.now() - timedelta(days=180)).strftime("%Y-%m")
     
     for maturity, series_key in yield_series.items():
-        result = fetch_ecb_series("YC", series_key, start_date=start_date)
+        # Use lastNObservations to get daily data
+        result = fetch_ecb_series("YC", series_key, start_date=None)
         if result and "value" in result:
             yields[maturity] = result["value"]
             series_history[maturity] = result.get("observations", [])
@@ -267,12 +263,10 @@ def fetch_ecb_reference_rates() -> None:
     
     rates = {}
     series_history = {}
-    # Use start date of 6 months ago to get proper monthly data with dates
-    from datetime import datetime, timedelta
-    start_date = (datetime.now() - timedelta(days=180)).strftime("%Y-%m")
     
     for name, series_key in reference_series.items():
-        result = fetch_ecb_series("FM", series_key, start_date=start_date)
+        # Use lastNObservations to get daily data
+        result = fetch_ecb_series("FM", series_key, start_date=None)
         if result and "value" in result:
             rates[name] = result["value"]
             series_history[name] = result.get("observations", [])

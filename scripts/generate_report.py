@@ -731,6 +731,74 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     except Exception as e:
         logger.error(f"  Error creating VIX vs Gold chart: {e}")
     
+    # Create Euribor 12M - €STR Spread chart (90 days)
+    try:
+        from scripts.utils.caching import load_from_json, CUSTOM_DATA_DIR
+        
+        euribor = load_from_json("euribor", CUSTOM_DATA_DIR)
+        ref_rates = load_from_json("ecb_reference_rates", CUSTOM_DATA_DIR)
+        
+        if not euribor or not ref_rates:
+            logger.warning("  Euribor or ECB reference rates data not available")
+        else:
+            # Get EURIBOR_12M and ESTR observations
+            euribor_12m_obs = euribor.get("history", {}).get("EURIBOR_12M", [])
+            estr_obs = ref_rates.get("history", {}).get("ESTR", [])
+            
+            if not euribor_12m_obs or not estr_obs:
+                logger.warning("  EURIBOR_12M or ESTR history not available")
+            else:
+                # Parse dates and create DataFrames
+                euribor_df = pd.DataFrame(euribor_12m_obs)
+                estr_df = pd.DataFrame(estr_obs)
+                
+                # Convert time strings to datetime
+                euribor_df["date"] = pd.to_datetime(euribor_df["time"])
+                estr_df["date"] = pd.to_datetime(estr_df["time"])
+                
+                # Merge on date
+                merged = pd.merge(euribor_df, estr_df, on="date", suffixes=("_euribor", "_estr"))
+                
+                # Calculate spread
+                merged["spread"] = merged["value_euribor"] - merged["value_estr"]
+                
+                # Filter to last 365 days to get more data points with monthly data
+                cutoff = datetime.now() - timedelta(days=365)
+                merged = merged[merged["date"] >= cutoff]
+                
+                if len(merged) < 2:
+                    logger.warning("  Not enough data points for spread chart")
+                else:
+                    fig, ax = plt.subplots(figsize=(10, 4))
+                    
+                    # Gruvbox styling
+                    fig.patch.set_facecolor(GRUVBOX_BG)
+                    ax.set_facecolor(GRUVBOX_BG)
+                    ax.plot(merged["date"], merged["spread"], label="Euribor 12M - €STR", color=GRUVBOX_PURPLE, linewidth=2)
+                    ax.set_title("Euribor 12M - ECB €STR Spread (Last 365 Days)", color=GRUVBOX_FG)
+                    ax.set_xlabel("Date", color=GRUVBOX_FG)
+                    ax.set_ylabel("Spread (bps)", color=GRUVBOX_FG)
+                    ax.legend(facecolor=GRUVBOX_BG, labelcolor=GRUVBOX_FG)
+                    ax.grid(True, color=GRUVBOX_GRAY, alpha=0.3)
+                    ax.tick_params(colors=GRUVBOX_FG)
+                    ax.spines['bottom'].set_color(GRUVBOX_FG)
+                    ax.spines['top'].set_color(GRUVBOX_FG)
+                    ax.spines['left'].set_color(GRUVBOX_FG)
+                    ax.spines['right'].set_color(GRUVBOX_FG)
+                    
+                    # Show one label per month to avoid clutter
+                    ax.xaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
+                    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m'))
+                    plt.tight_layout()
+                    
+                    img_path = REPORTS_DIR / "euribor_estr_spread.png"
+                    fig.savefig(img_path, dpi=300, bbox_inches="tight", facecolor=GRUVBOX_BG)
+                    plt.close(fig)
+                    visualizations.append({"title": "Euribor 12M - €STR Spread", "path": str(img_path)})
+                    logger.info(f"  Created Euribor 12M - €STR spread chart")
+    except Exception as e:
+        logger.error(f"  Error creating Euribor-€STR spread chart: {e}")
+    
     return visualizations
 
 
