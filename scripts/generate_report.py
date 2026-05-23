@@ -1141,6 +1141,80 @@ def create_html_report(
     </table>
     """
     
+    # Spanish Real Estate table
+    real_estate_labels = {
+        "avg_mortgage_rate": "Average Mortgage Interest Rate",
+        "new_mortgage_loans_count": "New Mortgage Loans (Count)",
+        "new_mortgage_loans_value": "New Mortgage Loans (Value)",
+        "mortgage_repayment_burden": "Mortgage Repayment Burden",
+        "mortgage_default_rate": "Mortgage Default Rate",
+        "house_price_index": "House Price Index (IPV)",
+        "fixed_vs_variable_rate_share": "Fixed vs. Variable Rate Share",
+        "mortgage_approval_time": "Mortgage Approval Time",
+        "mortgage_early_repayments": "Mortgage Early Repayments",
+    }
+    
+    real_estate_value_pct = {
+        "avg_mortgage_rate": True,
+        "new_mortgage_loans_count": False,
+        "new_mortgage_loans_value": False,
+        "mortgage_repayment_burden": True,
+        "mortgage_default_rate": True,
+        "house_price_index": False,
+        "fixed_vs_variable_rate_share": True,
+        "mortgage_approval_time": False,
+        "mortgage_early_repayments": False,
+    }
+    
+    def format_real_estate(name):
+        """Helper to format a real estate row."""
+        d = real_estate_data.get("indicators", {}).get(name, {})
+        is_pct = real_estate_value_pct.get(name, True)
+        val = format_percentage(d.get("value", 0)) if is_pct else format_number(d.get("value", 0))
+        chg_1m = format_percentage(d.get("change_1m", 0))
+        chg_1y = format_percentage(d.get("change_1y", 0))
+        label = real_estate_labels.get(name, name.replace('_', ' ').title())
+        unit = d.get("unit", "")
+        desc = d.get("description", "")
+        source = d.get("source", "")
+        full_desc = f"{desc} - {source}" if source else desc
+        tooltip_html = f'<span class="tooltiptext">{full_desc}</span>' if full_desc else ''
+        return f'<tr class="tooltip-row"><td>{label}{tooltip_html}</td><td>{val} {unit}</td><td>{chg_1m}</td><td>{chg_1y}</td></tr>'
+    
+    # Load Spanish real estate data
+    try:
+        from scripts.utils.caching import load_from_json, CUSTOM_DATA_DIR
+        real_estate_data = load_from_json("spanish_real_estate", CUSTOM_DATA_DIR)
+    except Exception:
+        real_estate_data = {"indicators": {}}
+    
+    real_estate_table_rows = f"""
+    <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>1Y Change</th></tr>
+    """
+    
+    real_estate_keys = [
+        "avg_mortgage_rate",
+        "new_mortgage_loans_count",
+        "new_mortgage_loans_value",
+        "mortgage_repayment_burden",
+        "mortgage_default_rate",
+        "house_price_index",
+        "fixed_vs_variable_rate_share",
+        "mortgage_approval_time",
+        "mortgage_early_repayments",
+    ]
+    
+    for key in real_estate_keys:
+        if key in real_estate_data.get("indicators", {}):
+            real_estate_table_rows += format_real_estate(key)
+    
+    real_estate_table = f"""
+    <h2>🏠 Spanish Real Estate</h2>
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; table-layout: fixed;">
+        {real_estate_table_rows}
+    </table>
+    """
+    
     # Visualizations
     viz_html = ""
     for viz in visualizations:
@@ -1212,6 +1286,17 @@ def create_html_report(
         table:nth-of-type(1) td:nth-child(4) { width: 15%; }
         table:nth-of-type(1) th:nth-child(5),
         table:nth-of-type(1) td:nth-child(5) { width: 20%; }
+        /* 5-column table (Market Snapshot) */
+        table:nth-of-type(1) th:nth-child(1),
+        table:nth-of-type(1) td:nth-child(1) { width: 30%; }
+        table:nth-of-type(1) th:nth-child(2),
+        table:nth-of-type(1) td:nth-child(2) { width: 20%; }
+        table:nth-of-type(1) th:nth-child(3),
+        table:nth-of-type(1) td:nth-child(3) { width: 15%; }
+        table:nth-of-type(1) th:nth-child(4),
+        table:nth-of-type(1) td:nth-child(4) { width: 15%; }
+        table:nth-of-type(1) th:nth-child(5),
+        table:nth-of-type(1) td:nth-child(5) { width: 20%; }
         /* 4-column table (Macroeconomic Dashboard) */
         table:nth-of-type(2) th:nth-child(1),
         table:nth-of-type(2) td:nth-child(1) { width: 40%; }
@@ -1228,6 +1313,15 @@ def create_html_report(
         table:nth-of-type(3) td:nth-child(2) { width: 25%; }
         table:nth-of-type(3) th:nth-child(3),
         table:nth-of-type(3) td:nth-child(3) { width: 25%; }
+        /* 4-column table (Spanish Real Estate) */
+        table:nth-of-type(4) th:nth-child(1),
+        table:nth-of-type(4) td:nth-child(1) { width: 40%; }
+        table:nth-of-type(4) th:nth-child(2),
+        table:nth-of-type(4) td:nth-child(2) { width: 20%; }
+        table:nth-of-type(4) th:nth-child(3),
+        table:nth-of-type(4) td:nth-child(3) { width: 20%; }
+        table:nth-of-type(4) th:nth-child(4),
+        table:nth-of-type(4) td:nth-child(4) { width: 20%; }
         th {
             background-color: #458588;
             color: #282828;
@@ -1324,6 +1418,8 @@ def create_html_report(
     
     {gdp_yoy_table}
     
+    {real_estate_table}
+    
     <h2>📊 Visualizations</h2>
     <div class="viz-container">
     {viz_html}
@@ -1345,7 +1441,7 @@ def create_html_report(
 
 def save_html_report(html: str, report_type: str = "daily") -> Path:
     """Save HTML report to file."""
-    filename = f"{report_type}_report_{datetime.now().strftime('%Y-%m-%d')}.html"
+    filename = f"{report_type}_report.html"
     filepath = REPORTS_DIR / filename
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(html)
@@ -1356,7 +1452,7 @@ def save_pdf_report(html: str, report_type: str = "daily") -> Path:
     """Save PDF report using WeasyPrint."""
     try:
         from weasyprint import HTML
-        filename = f"{report_type}_report_{datetime.now().strftime('%Y-%m-%d')}.pdf"
+        filename = f"{report_type}_report.pdf"
         filepath = REPORTS_DIR / filename
         HTML(string=html).write_pdf(filepath)
         return filepath

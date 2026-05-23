@@ -38,21 +38,21 @@ def run_fetch_openbb() -> bool:
 
 
 def run_fetch_custom() -> bool:
-    """Run fetch_custom.py script."""
-    logger.info("Running fetch_custom.py...")
+    """Run fetch_all.py script for custom data sources."""
+    logger.info("Running fetch_all.py...")
     try:
         result = subprocess.run(
-            [sys.executable, "scripts/fetch_custom.py"],
+            [sys.executable, "scripts/fetch_all.py"],
             capture_output=True,
             text=True,
         )
         if result.returncode != 0:
-            logger.error(f"fetch_custom.py failed:\n{result.stderr}")
+            logger.error(f"fetch_all.py failed:\n{result.stderr}")
             return False
-        logger.info("fetch_custom.py completed successfully")
+        logger.info("fetch_all.py completed successfully")
         return True
     except Exception as e:
-        logger.error(f"Error running fetch_custom.py: {e}")
+        logger.error(f"Error running fetch_all.py: {e}")
         return False
 
 

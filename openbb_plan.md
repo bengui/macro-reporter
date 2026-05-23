@@ -34,7 +34,12 @@ financial-digest/
 
 │   ├── fetch_openbb.py   # Fetch data from OpenBB
 
-│   ├── fetch_custom.py   # Fetch data from custom APIs (Iteration 2)
+│   ├── fetch_ecb.py       # Fetch ECB data
+│   ├── fetch_gdelt.py     # Fetch GDELT geopolitical data
+│   ├── fetch_supply_chain.py # Fetch NY Fed supply chain data
+│   ├── fetch_ipos.py      # Fetch IPO activity data
+│   ├── fetch_spanish_real_estate.py # Fetch Spanish real estate data
+│   ├── fetch_all.py       # Fetch all custom data sources
 
 │   ├── generate_report.py # Generate the digest report
 
@@ -152,8 +157,8 @@ Copy
    | Supply Chain Pressure| [NY Fed API](https://www.newyorkfed.org/) | `fetch_supply_chain()`           | `data/custom_data/supply_chain.json` |
    | IPO Activity         | [Nasdaq API](https://www.nasdaq.com/market-activity/ipos) | `fetch_ipos()` (scrape or API) | `data/custom_data/ipos.csv` |
 
-2. **Create `fetch_custom.py`**
-   - Implement functions to fetch and cache custom data.
+2. **Create individual fetch scripts**
+   - Split into separate files per data source for easier debugging.
    - Example for Euribor:
      ```python
      import requests
@@ -166,8 +171,8 @@ Copy
              json.dump(response.json(), f)
      ```
 
-3. **Update `fetch_openbb.py`**
-   - Call `fetch_custom.py` functions to fetch all custom data.
+3. **Update `fetch_all.py`**
+   - Orchestrates all custom data fetch scripts.
 
 4. **Update `generate_report.py`**
    - Load custom data from `/data/custom_data/`.

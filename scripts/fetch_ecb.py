@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""
-Fetch data from custom APIs (Iteration 2).
-
-This script fetches Euribor rates, geopolitical risk data, supply chain pressure,
-and IPO activity from custom APIs. Also fetches additional ECB data for enhanced reports.
-"""
+"""Fetch ECB (European Central Bank) data from Data Portal API."""
 
 import json
 import os
@@ -25,7 +20,7 @@ from scripts.utils.caching import (
 )
 from scripts.utils.logging import setup_logging
 
-logger = setup_logging("fetch_custom")
+logger = setup_logging("fetch_ecb")
 
 # Configuration
 CUSTOM_DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -34,17 +29,9 @@ CUSTOM_DATA_DIR.mkdir(parents=True, exist_ok=True)
 ECB_API_BASE = "https://data-api.ecb.europa.eu/service/data"
 
 # Load API keys
-GDELT_API_KEY = get_api_key("GDELT")
-if GDELT_API_KEY:
-    os.environ["GDELT_API_KEY"] = GDELT_API_KEY
-    logger.info(f"GDELT API key configured: {GDELT_API_KEY[:8]}...")
-else:
-    logger.warning("GDELT API key not found. Using mock data for GDELT.")
-
-FMP_KEY = get_api_key("FMP")
-if FMP_KEY:
-    os.environ["FMP_API_KEY"] = FMP_KEY
-    logger.info(f"FMP API key configured")
+FRED_KEY = get_api_key("FRED")
+if FRED_KEY:
+    os.environ["FRED_API_KEY"] = FRED_KEY
 
 ECB_KEY = get_api_key("ECB")
 if ECB_KEY:
@@ -134,15 +121,6 @@ def fetch_ecb_series(
     except Exception as e:
         logger.warning(f"  Error fetching {dataflow}/{series_key}: {e}")
         return None
-
-# GDELT API
-GDELT_BASE_URL = "https://api.gdeltproject.org/v2/doc/doc"
-
-# NY Fed Supply Chain Pressure Index
-NY_FED_SCP_URL = "https://www.newyorkfed.org/medialibrary/interactives/supply-chain-pressure-index/data/SCPI.csv"
-
-# Nasdaq IPO calendar
-NASDAQ_IPO_URL = "https://www.nasdaq.com/market-activity/ipos"
 
 
 def fetch_euribor() -> None:
@@ -328,7 +306,6 @@ def fetch_bond_spreads() -> None:
     logger.info("Fetching Spanish and German 10Y bond yields...")
     
     # Set FRED API key BEFORE importing obb
-    from scripts.utils.api_keys import get_api_key
     FRED_KEY = get_api_key("FRED")
     if FRED_KEY:
         os.environ["FRED_API_KEY"] = FRED_KEY
@@ -433,163 +410,9 @@ def fetch_bond_spreads() -> None:
         save_to_json(spread_data, "bond_spreads", CUSTOM_DATA_DIR)
 
 
-def fetch_gdelt() -> None:
-    """Fetch geopolitical risk data from GDELT."""
-    logger.info("Fetching GDELT geopolitical risk data...")
-    
-    # Reload key in case it was added
-    current_key = get_api_key("GDELT")
-    GDELT_API_KEY = current_key
-    
-    if not GDELT_API_KEY:
-        logger.warning("  GDELT API key not found. Using mock data.")
-        # Mock data for demo
-        gdelt_data = {
-            "fetch_date": datetime.now().isoformat(),
-            "risk_indicators": {
-                "global_risk_index": 65.5,
-                "conflict_intensity": "Medium",
-                "top_risks": [
-                    {"region": "Middle East", "risk_level": 85, "description": "Israel-Hamas conflict"},
-                    {"region": "Eastern Europe", "risk_level": 75, "description": "Russia-Ukraine war"},
-                    {"region": "South China Sea", "risk_level": 70, "description": "China-US tensions"},
-                ],
-            },
-            "source": "GDELT Project",
-            "note": "Actual API requires GDELT API key",
-        }
-        save_to_json(gdelt_data, "gdelt", CUSTOM_DATA_DIR)
-        logger.info("  Saved GDELT data (mock)")
-        return
-    
-    try:
-        # Actual API call (requires API key)
-        params = {
-            "query": "cat:CONFLICT",
-            "mode": "artlist",
-            "maxrecords": 100,
-            "format": "json",
-            "api": GDELT_API_KEY,
-        }
-        response = requests.get(GDELT_BASE_URL, params=params, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        
-        save_to_json(data, "gdelt", CUSTOM_DATA_DIR)
-        logger.info(f"  Saved GDELT data ({len(data)} records)")
-    except Exception as e:
-        logger.error(f"  Error fetching GDELT: {e}")
-        logger.info("  Falling back to mock data")
-        gdelt_data = {
-            "fetch_date": datetime.now().isoformat(),
-            "risk_indicators": {
-                "global_risk_index": 65.5,
-                "conflict_intensity": "Medium",
-                "top_risks": [
-                    {"region": "Middle East", "risk_level": 85, "description": "Israel-Hamas conflict"},
-                    {"region": "Eastern Europe", "risk_level": 75, "description": "Russia-Ukraine war"},
-                    {"region": "South China Sea", "risk_level": 70, "description": "China-US tensions"},
-                ],
-            },
-            "source": "GDELT Project",
-            "note": f"API call failed: {e}",
-        }
-        save_to_json(gdelt_data, "gdelt", CUSTOM_DATA_DIR)
-        logger.info("  Saved GDELT data (mock)")
-
-
-def fetch_supply_chain() -> None:
-    """Fetch supply chain pressure index from NY Fed."""
-    logger.info("Fetching NY Fed Supply Chain Pressure Index...")
-    try:
-        response = requests.get(NY_FED_SCP_URL, timeout=30)
-        response.raise_for_status()
-        
-        # Parse CSV data
-        import pandas as pd
-        from io import StringIO
-        
-        df = pd.read_csv(StringIO(response.text))
-        if df.empty:
-            logger.warning("  No data returned")
-            return
-        
-        # Convert to JSON-serializable format
-        data = {
-            "fetch_date": datetime.now().isoformat(),
-            "latest_index": float(df.iloc[-1, 1]) if len(df.columns) > 1 else 0,
-            "previous_index": float(df.iloc[-2, 1]) if len(df) > 1 and len(df.columns) > 1 else 0,
-            "change": "N/A",
-            "source": "Federal Reserve Bank of New York",
-            "raw_data": df.to_dict(orient="records"),
-        }
-        
-        save_to_json(data, "supply_chain", CUSTOM_DATA_DIR)
-        logger.info("  Saved Supply Chain Pressure Index data")
-    except Exception as e:
-        logger.error(f"  Error fetching Supply Chain data: {e}")
-        # Save mock data on error
-        mock_data = {
-            "fetch_date": datetime.now().isoformat(),
-            "latest_index": 2.5,
-            "previous_index": 2.3,
-            "change": "+0.2",
-            "source": "Federal Reserve Bank of New York",
-            "note": "Mock data - actual API fetch failed",
-        }
-        save_to_json(mock_data, "supply_chain", CUSTOM_DATA_DIR)
-        logger.info("  Saved mock Supply Chain data")
-
-
-def fetch_ipos() -> None:
-    """Fetch IPO activity data."""
-    logger.info("Fetching IPO activity data...")
-    try:
-        # Note: Nasdaq IPO data requires web scraping or API access
-        # For demo, use mock data
-        ipo_data = {
-            "fetch_date": datetime.now().isoformat(),
-            "upcoming_ipos": [
-                {"company": "TechCorp Inc.", "symbol": "TCI", "price_range": "$18-$20", "shares": 10000000, "date": "2026-05-20"},
-                {"company": "BioHealth Ltd.", "symbol": "BHL", "price_range": "$14-$16", "shares": 8000000, "date": "2026-05-25"},
-                {"company": "GreenEnergy Co.", "symbol": "GEC", "price_range": "$25-$28", "shares": 12000000, "date": "2026-06-01"},
-            ],
-            "recent_ipos": [
-                {"company": "CloudFirst", "symbol": "CFST", "price": "$22", "shares": 15000000, "date": "2026-04-15", "performance": "+15%"},
-                {"company": "DataSystems", "symbol": "DSYS", "price": "$18", "shares": 10000000, "date": "2026-04-10", "performance": "+8%"},
-            ],
-            "source": "Nasdaq",
-            "note": "Mock data - actual scraping would be required for production",
-        }
-        
-        save_to_json(ipo_data, "ipos", CUSTOM_DATA_DIR)
-        logger.info("  Saved IPO data (mock)")
-    except Exception as e:
-        logger.error(f"  Error fetching IPO data: {e}")
-
-
-def fetch_all() -> None:
-    """Fetch all custom data."""
-    logger.info("=" * 60)
-    logger.info("Starting Custom API data fetch")
-    logger.info("=" * 60)
-    
-    # ECB Data Portal API fetches
+if __name__ == "__main__":
     fetch_euribor()
     fetch_ecb_yield_curve()
     fetch_ecb_reference_rates()
     fetch_ecb_exchange_rates()
     fetch_bond_spreads()
-    
-    # Other custom APIs
-    fetch_gdelt()
-    fetch_supply_chain()
-    fetch_ipos()
-    
-    logger.info("=" * 60)
-    logger.info("Custom API data fetch completed")
-    logger.info("=" * 60)
-
-
-if __name__ == "__main__":
-    fetch_all()

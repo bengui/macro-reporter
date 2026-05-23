@@ -19,7 +19,12 @@ macro_reporter/
 │   └── custom_data/      # Data from custom APIs
 ├── scripts/
 │   ├── fetch_openbb.py   # Fetch data from OpenBB
-│   ├── fetch_custom.py   # Fetch data from custom APIs
+│   ├── fetch_ecb.py       # Fetch ECB data
+│   ├── fetch_gdelt.py     # Fetch GDELT geopolitical data
+│   ├── fetch_supply_chain.py # Fetch NY Fed supply chain data
+│   ├── fetch_ipos.py      # Fetch IPO activity data
+│   ├── fetch_spanish_real_estate.py # Fetch Spanish real estate data
+│   ├── fetch_all.py       # Fetch all custom data sources
 │   ├── generate_report.py # Generate the digest report
 │   └── utils/            # Helper functions
 ├── reports/             # Generated reports (PDF/HTML)
@@ -68,11 +73,18 @@ python scripts/fetch_openbb.py && python scripts/generate_report.py
 # Fetch only OpenBB data
 python scripts/fetch_openbb.py
 
-# Fetch custom API data
-python scripts/fetch_custom.py
+# Fetch all custom API data
+python scripts/fetch_all.py
+
+# Or fetch individual custom data sources
+python scripts/fetch_ecb.py
+python scripts/fetch_gdelt.py
+python scripts/fetch_supply_chain.py
+python scripts/fetch_ipos.py
+python scripts/fetch_spanish_real_estate.py
 
 # Fetch all data
-python scripts/fetch_openbb.py && python scripts/fetch_custom.py
+python scripts/fetch_openbb.py && python scripts/fetch_all.py
 ```
 
 ### Generate Reports
