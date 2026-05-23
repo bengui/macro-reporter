@@ -116,17 +116,31 @@ def load_from_json(
 
 def clear_cache(directory: Union[Path, str] = DATA_DIR) -> int:
     """
-    Clear all cached data files.
+    Clear all cached data files recursively.
     
     Args:
-        directory: Directory to clear
+        directory: Directory to clear (default: DATA_DIR)
     
     Returns:
         Number of files deleted
     """
     directory = Path(directory)
     count = 0
-    for filepath in directory.glob("*.csv") + directory.glob("*.json"):
+    # Clear files recursively in all subdirectories
+    for filepath in directory.rglob("*.csv") + directory.rglob("*.json") + directory.rglob("*.pdf") + directory.rglob("*.html"):
         filepath.unlink()
         count += 1
     return count
+
+
+def clear_all_data() -> int:
+    """
+    Clear all data files from the entire data directory.
+    
+    This removes all cached CSV, JSON, PDF, and HTML files recursively
+    from the data/ directory and its subdirectories (openbb_data/, custom_data/, reports/).
+    
+    Returns:
+        Number of files deleted
+    """
+    return clear_cache(DATA_DIR)

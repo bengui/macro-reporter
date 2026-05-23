@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.utils.logging import setup_logging
+from scripts.utils.caching import clear_all_data
 
 # Import all fetch functions
 from scripts.fetch_ecb import (
@@ -29,6 +30,10 @@ def fetch_all() -> None:
     logger.info("=" * 60)
     logger.info("Starting Custom API data fetch")
     logger.info("=" * 60)
+    
+    # Clear all existing data to ensure fresh data
+    num_deleted = clear_all_data()
+    logger.info(f"Cleared {num_deleted} existing data files")
 
     # ECB Data Portal API fetches
     fetch_euribor()
