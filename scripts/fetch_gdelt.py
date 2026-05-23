@@ -32,7 +32,7 @@ if GDELT_API_KEY:
     os.environ["GDELT_API_KEY"] = GDELT_API_KEY
     logger.info(f"GDELT API key configured: {GDELT_API_KEY[:8]}...")
 else:
-    logger.warning("GDELT API key not found. Using mock data for GDELT.")
+    logger.warning("GDELT API key not found.")
 
 
 def fetch_gdelt() -> None:
@@ -44,24 +44,15 @@ def fetch_gdelt() -> None:
     GDELT_API_KEY = current_key
     
     if not GDELT_API_KEY:
-        logger.warning("  GDELT API key not found. Using mock data.")
-        # Mock data for demo
+        logger.warning("  GDELT API key not found.")
         gdelt_data = {
             "fetch_date": datetime.now().isoformat(),
-            "risk_indicators": {
-                "global_risk_index": 65.5,
-                "conflict_intensity": "Medium",
-                "top_risks": [
-                    {"region": "Middle East", "risk_level": 85, "description": "Israel-Hamas conflict"},
-                    {"region": "Eastern Europe", "risk_level": 75, "description": "Russia-Ukraine war"},
-                    {"region": "South China Sea", "risk_level": 70, "description": "China-US tensions"},
-                ],
-            },
+            "risk_indicators": None,
             "source": "GDELT Project",
-            "note": "Actual API requires GDELT API key",
+            "note": "NA - API key not available",
         }
         save_to_json(gdelt_data, "gdelt", CUSTOM_DATA_DIR)
-        logger.info("  Saved GDELT data (mock)")
+        logger.info("  Saved GDELT data (NA)")
         return
     
     try:
@@ -81,23 +72,14 @@ def fetch_gdelt() -> None:
         logger.info(f"  Saved GDELT data ({len(data)} records)")
     except Exception as e:
         logger.error(f"  Error fetching GDELT: {e}")
-        logger.info("  Falling back to mock data")
         gdelt_data = {
             "fetch_date": datetime.now().isoformat(),
-            "risk_indicators": {
-                "global_risk_index": 65.5,
-                "conflict_intensity": "Medium",
-                "top_risks": [
-                    {"region": "Middle East", "risk_level": 85, "description": "Israel-Hamas conflict"},
-                    {"region": "Eastern Europe", "risk_level": 75, "description": "Russia-Ukraine war"},
-                    {"region": "South China Sea", "risk_level": 70, "description": "China-US tensions"},
-                ],
-            },
+            "risk_indicators": None,
             "source": "GDELT Project",
-            "note": f"API call failed: {e}",
+            "note": f"NA - {e}",
         }
         save_to_json(gdelt_data, "gdelt", CUSTOM_DATA_DIR)
-        logger.info("  Saved GDELT data (mock)")
+        logger.info("  Saved GDELT data (NA)")
 
 
 if __name__ == "__main__":

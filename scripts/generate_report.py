@@ -823,7 +823,7 @@ def create_html_report(
     report_type: str = "daily",
 ) -> str:
     """Create HTML report content."""
-    report_date = format_date(datetime.now())
+    report_date = format_date(datetime.now(), "%Y-%m-%d %H:%M:%S")
     
     # Traffic light signals
     signals = {
@@ -1170,9 +1170,9 @@ def create_html_report(
         """Helper to format a real estate row."""
         d = real_estate_data.get("indicators", {}).get(name, {})
         is_pct = real_estate_value_pct.get(name, True)
-        val = format_percentage(d.get("value", 0)) if is_pct else format_number(d.get("value", 0))
-        chg_1m = format_percentage(d.get("change_1m", 0))
-        chg_1y = format_percentage(d.get("change_1y", 0))
+        val = format_percentage(d.get("value")) if is_pct else format_number(d.get("value"))
+        chg_1m = format_percentage(d.get("change_1m"))
+        chg_1y = format_percentage(d.get("change_1y"))
         label = real_estate_labels.get(name, name.replace('_', ' ').title())
         unit = d.get("unit", "")
         desc = d.get("description", "")

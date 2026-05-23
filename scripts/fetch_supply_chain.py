@@ -44,9 +44,9 @@ def fetch_supply_chain() -> None:
         # Convert to JSON-serializable format
         data = {
             "fetch_date": datetime.now().isoformat(),
-            "latest_index": float(df.iloc[-1, 1]) if len(df.columns) > 1 else 0,
-            "previous_index": float(df.iloc[-2, 1]) if len(df) > 1 and len(df.columns) > 1 else 0,
-            "change": "N/A",
+            "latest_index": float(df.iloc[-1, 1]) if len(df.columns) > 1 else None,
+            "previous_index": float(df.iloc[-2, 1]) if len(df) > 1 and len(df.columns) > 1 else None,
+            "change": None,
             "source": "Federal Reserve Bank of New York",
             "raw_data": df.to_dict(orient="records"),
         }
@@ -55,17 +55,16 @@ def fetch_supply_chain() -> None:
         logger.info("  Saved Supply Chain Pressure Index data")
     except Exception as e:
         logger.error(f"  Error fetching Supply Chain data: {e}")
-        # Save mock data on error
-        mock_data = {
+        data = {
             "fetch_date": datetime.now().isoformat(),
-            "latest_index": 2.5,
-            "previous_index": 2.3,
-            "change": "+0.2",
+            "latest_index": None,
+            "previous_index": None,
+            "change": None,
             "source": "Federal Reserve Bank of New York",
-            "note": "Mock data - actual API fetch failed",
+            "note": f"NA - {e}",
         }
-        save_to_json(mock_data, "supply_chain", CUSTOM_DATA_DIR)
-        logger.info("  Saved mock Supply Chain data")
+        save_to_json(data, "supply_chain", CUSTOM_DATA_DIR)
+        logger.info("  Saved Supply Chain data (NA)")
 
 
 if __name__ == "__main__":

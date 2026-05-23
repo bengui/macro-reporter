@@ -28,26 +28,27 @@ def fetch_ipos() -> None:
     logger.info("Fetching IPO activity data...")
     try:
         # Note: Nasdaq IPO data requires web scraping or API access
-        # For demo, use mock data
+        # Not implemented - return NA
         ipo_data = {
             "fetch_date": datetime.now().isoformat(),
-            "upcoming_ipos": [
-                {"company": "TechCorp Inc.", "symbol": "TCI", "price_range": "$18-$20", "shares": 10000000, "date": "2026-05-20"},
-                {"company": "BioHealth Ltd.", "symbol": "BHL", "price_range": "$14-$16", "shares": 8000000, "date": "2026-05-25"},
-                {"company": "GreenEnergy Co.", "symbol": "GEC", "price_range": "$25-$28", "shares": 12000000, "date": "2026-06-01"},
-            ],
-            "recent_ipos": [
-                {"company": "CloudFirst", "symbol": "CFST", "price": "$22", "shares": 15000000, "date": "2026-04-15", "performance": "+15%"},
-                {"company": "DataSystems", "symbol": "DSYS", "price": "$18", "shares": 10000000, "date": "2026-04-10", "performance": "+8%"},
-            ],
+            "upcoming_ipos": None,
+            "recent_ipos": None,
             "source": "Nasdaq",
-            "note": "Mock data - actual scraping would be required for production",
+            "note": "NA - web scraping not implemented",
         }
         
         save_to_json(ipo_data, "ipos", CUSTOM_DATA_DIR)
-        logger.info("  Saved IPO data (mock)")
+        logger.info("  Saved IPO data (NA)")
     except Exception as e:
         logger.error(f"  Error fetching IPO data: {e}")
+        ipo_data = {
+            "fetch_date": datetime.now().isoformat(),
+            "upcoming_ipos": None,
+            "recent_ipos": None,
+            "source": "Nasdaq",
+            "note": f"NA - {e}",
+        }
+        save_to_json(ipo_data, "ipos", CUSTOM_DATA_DIR)
 
 
 if __name__ == "__main__":

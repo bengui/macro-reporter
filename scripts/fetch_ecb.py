@@ -168,23 +168,22 @@ def fetch_euribor() -> None:
         save_to_json(euribor_data, "euribor", CUSTOM_DATA_DIR)
         logger.info(f"  Saved Euribor data ({len(rates)} rates)")
     else:
-        # Fallback to mock data - ECB rates as of recent data
-        logger.warning("  Could not fetch from ECB API. Using recent mock data.")
+        logger.warning("  Could not fetch from ECB API.")
         euribor_data = {
             "fetch_date": datetime.now().isoformat(),
             "rates": {
-                "EURIBOR_1W": 3.85,
-                "EURIBOR_1M": 3.87,
-                "EURIBOR_3M": 3.90,
-                "EURIBOR_6M": 3.92,
-                "EURIBOR_12M": 3.95,
+                "EURIBOR_1W": None,
+                "EURIBOR_1M": None,
+                "EURIBOR_3M": None,
+                "EURIBOR_6M": None,
+                "EURIBOR_12M": None,
             },
             "history": {},
-            "source": "Mock data (based on recent ECB rates)",
-            "note": "ECB API was unreachable. Data reflects approximate recent rates.",
+            "source": "ECB Data Portal API (FM dataflow)",
+            "note": "NA - API unavailable",
         }
         save_to_json(euribor_data, "euribor", CUSTOM_DATA_DIR)
-        logger.info("  Saved Euribor data (mock)")
+        logger.info("  Saved Euribor data (NA)")
 
 
 def fetch_ecb_yield_curve() -> None:
@@ -310,17 +309,18 @@ def fetch_bond_spreads() -> None:
     if FRED_KEY:
         os.environ["FRED_API_KEY"] = FRED_KEY
     else:
-        logger.warning("  FRED API key not found. Using mock data for bond spreads.")
+        logger.warning("  FRED API key not found.")
         spread_data = {
             "fetch_date": datetime.now().isoformat(),
-            "spain_10y": 3.45,
-            "germany_10y": 3.00,
-            "spread": 0.45,
+            "spain_10y": None,
+            "germany_10y": None,
+            "spread": None,
             "history": {},
-            "source": "Mock data (FRED API key not available)",
+            "source": "FRED (Federal Reserve Economic Data)",
+            "note": "NA - FRED API key not available",
         }
         save_to_json(spread_data, "bond_spreads", CUSTOM_DATA_DIR)
-        logger.info(f"  Saved bond spreads data (mock)")
+        logger.info(f"  Saved bond spreads data (NA)")
         return
     
     try:
@@ -386,26 +386,38 @@ def fetch_bond_spreads() -> None:
             logger.info(f"  Spain 10Y: {spain_yield:.2f}%, Germany 10Y: {germany_yield:.2f}%, Spread: {spread:.2f}%")
         else:
             logger.warning("  Empty data received from FRED for bond spreads")
+            spread_data = {
+                "fetch_date": datetime.now().isoformat(),
+                "spain_10y": None,
+                "germany_10y": None,
+                "spread": None,
+                "history": {},
+                "source": "FRED (Federal Reserve Economic Data)",
+                "note": "NA - Empty data received",
+            }
+            save_to_json(spread_data, "bond_spreads", CUSTOM_DATA_DIR)
     except ImportError:
-        logger.warning("  pandas not available. Using mock data for bond spreads.")
+        logger.warning("  pandas not available.")
         spread_data = {
             "fetch_date": datetime.now().isoformat(),
-            "spain_10y": 3.45,
-            "germany_10y": 3.00,
-            "spread": 0.45,
+            "spain_10y": None,
+            "germany_10y": None,
+            "spread": None,
             "history": {},
-            "source": "Mock data",
+            "source": "FRED (Federal Reserve Economic Data)",
+            "note": "NA - pandas not available",
         }
         save_to_json(spread_data, "bond_spreads", CUSTOM_DATA_DIR)
     except Exception as e:
-        logger.warning(f"  Could not fetch bond spread data: {e}. Using mock data.")
+        logger.warning(f"  Could not fetch bond spread data: {e}.")
         spread_data = {
             "fetch_date": datetime.now().isoformat(),
-            "spain_10y": 3.45,
-            "germany_10y": 3.00,
-            "spread": 0.45,
+            "spain_10y": None,
+            "germany_10y": None,
+            "spread": None,
             "history": {},
-            "source": "Mock data",
+            "source": "FRED (Federal Reserve Economic Data)",
+            "note": f"NA - {e}",
         }
         save_to_json(spread_data, "bond_spreads", CUSTOM_DATA_DIR)
 

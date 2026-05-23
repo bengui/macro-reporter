@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 
 def format_number(
-    value: float,
+    value: Optional[float],
     decimals: int = 2,
     thousands_sep: str = ",",
     decimal_sep: str = ".",
@@ -20,13 +20,15 @@ def format_number(
         decimal_sep: Decimal separator
     
     Returns:
-        Formatted string
+        Formatted string, or "NA" if value is None
     """
+    if value is None:
+        return "NA"
     return f"{value:,.{decimals}f}".replace(",", "TEMP").replace(".", decimal_sep).replace("TEMP", thousands_sep)
 
 
 def format_percentage(
-    value: float,
+    value: Optional[float],
     decimals: int = 2,
     show_sign: bool = True,
 ) -> str:
@@ -39,8 +41,10 @@ def format_percentage(
         show_sign: Whether to show + sign for positive values
     
     Returns:
-        Formatted string with % sign
+        Formatted string with % sign, or "NA" if value is None
     """
+    if value is None:
+        return "NA"
     if show_sign and value > 0:
         sign = "+"
     else:
