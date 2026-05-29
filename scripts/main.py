@@ -146,10 +146,9 @@ def main() -> None:
         success = run_generate_report(args.type, args.output) and success
         sys.exit(0 if success else 1)
     
-    # Default: fetch OpenBB data and generate report
+    # Default: fetch all data (OpenBB + Custom) and generate report
     success = run_fetch_openbb()
-    if args.custom:
-        success = run_fetch_custom() and success
+    success = run_fetch_custom() and success
     if success:
         success = run_generate_report(args.type, args.output)
     
