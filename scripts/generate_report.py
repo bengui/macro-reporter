@@ -910,94 +910,6 @@ def create_html_report(
         "usd_cny": "USD/CNY Exchange Rate - US Dollar to Chinese Yuan exchange rate. Source: ECB.",
     }
     
-    # Executive summary
-    executive_summary = f"""
-    <div class="exec-summary">
-        <h2>Executive Summary - {report_date}</h2>
-        <p style="font-size: 16px; line-height: 1.6;">
-            The S&P 500 is currently at {format_number(snapshot['sp500']['value'])} 
-            ({format_percentage(snapshot['sp500']['change_1m'])} over the past month). 
-            Market volatility as measured by the VIX stands at {format_number(snapshot['vix']['value'])} 
-            ({signals['vix']}). 
-            STOXX 600 at {format_number(snapshot['stoxx600']['value'])} 
-            ({format_percentage(snapshot['stoxx600']['change_1m'])}). 
-            Gold prices have moved {format_percentage(snapshot['gold']['change_1m'])} 
-            over the past month to {format_number(snapshot['gold']['value'])}.
-        </p>
-        <p style="font-size: 16px; line-height: 1.6; margin-top: 10px;">
-            US inflation (CPI) is at {format_percentage(dashboard['us_cpi']['value'])} 
-            ({signals['us_cpi']}), while the unemployment rate stands at {format_percentage(dashboard['us_unemployment']['value'])} 
-            ({signals['us_unemployment']}). 
-            US GDP YoY growth at {format_percentage(dashboard.get('us_gdp_yoy', {}).get('value', 0))} 
-            ({signals.get('us_gdp_yoy', '')}).
-        </p>
-        """
-    
-    # Add EU and Spain info if available
-    if dashboard.get("eu_cpi") and dashboard["eu_cpi"]["value"] > 0:
-        executive_summary += f"""
-        <p style="font-size: 16px; line-height: 1.6; margin-top: 10px;">
-            EU CPI at {format_percentage(dashboard['eu_cpi']['value'])} 
-            ({signals.get('eu_cpi', '')}), EU Unemployment at {format_percentage(dashboard['eu_unemployment']['value'])} 
-            ({signals.get('eu_unemployment', '')}), EU GDP YoY at {format_percentage(dashboard.get('eu_gdp_yoy', {}).get('value', 0))} 
-            ({signals.get('eu_gdp_yoy', '')}). 
-            Spain CPI at {format_percentage(dashboard['spain_cpi']['value'])} 
-            ({signals.get('spain_cpi', '')}), Spain Unemployment at {format_percentage(dashboard['spain_unemployment']['value'])} 
-            ({signals.get('spain_unemployment', '')}), Spain GDP YoY at {format_percentage(dashboard.get('spain_gdp_yoy', {}).get('value', 0))} 
-            ({signals.get('spain_gdp_yoy', '')}).
-        </p>
-        """
-    
-    # Add bond spread info if available
-    if dashboard.get("spain_germany_10y_spread") and dashboard["spain_germany_10y_spread"]["value"] > 0:
-        executive_summary += f"""
-        <p style="font-size: 16px; line-height: 1.6; margin-top: 10px;">
-            Spain-Germany 10Y bond spread at {format_percentage(dashboard['spain_germany_10y_spread']['value'])} 
-            ({signals.get('spain_germany_10y_spread', '')}).
-        </p>
-        """
-    
-    # Add Euribor spread info if available
-    if dashboard.get("euribor_12m_estr_spread") and dashboard["euribor_12m_estr_spread"]["value"] > 0:
-        executive_summary += f"""
-        <p style="font-size: 16px; line-height: 1.6; margin-top: 10px;">
-            Euribor 12M - ECB €STR spread is at {format_percentage(dashboard['euribor_12m_estr_spread']['value'])} 
-            ({signals.get('euribor_12m_estr_spread', '')}). 
-            US 10Y Treasury yield at {format_percentage(dashboard['treasury_10y']['value'])} 
-            ({signals['treasury_10y']}).
-        </p>
-        """
-    
-    # Add ECB yield curve info if available
-    ecb_yields = [k for k in dashboard.keys() if k.startswith("ecb_yield_")]
-    if ecb_yields:
-        yield_items = []
-        for k in ecb_yields:
-            label = macro_labels.get(k, k.replace('_', ' ').title())
-            sig = signals.get(k, '')
-            yield_items.append(f"{label} {format_percentage(dashboard[k]['value'])} ({sig})")
-        executive_summary += f"""
-        <p style="font-size: 16px; line-height: 1.6; margin-top: 10px;">
-            Euro area yield curve: {', '.join(yield_items)}.
-        </p>
-        """
-    
-    # Add ECB reference rates info if available
-    ecb_rates = [k for k in dashboard.keys() if k.startswith("ecb_") and not k.startswith("ecb_yield_")]
-    if ecb_rates:
-        rate_items = []
-        for k in ecb_rates:
-            label = macro_labels.get(k, k.replace('_', ' ').title())
-            sig = signals.get(k, '')
-            rate_items.append(f"{label} {format_percentage(dashboard[k]['value'])} ({sig})")
-        executive_summary += f"""
-        <p style="font-size: 16px; line-height: 1.6; margin-top: 10px;">
-            ECB reference rates: {', '.join(rate_items)}.
-        </p>
-        """
-    
-    executive_summary += "</div>"
-    
     # Market snapshot table - label mapping for better display
     metric_labels = {
         "sp500": "S&P 500",
@@ -1402,8 +1314,6 @@ def create_html_report(
 <body>
     <h1>Macro Economic Financial Report</h1>
     <p class="meta"><em>Report Type: {report_type.capitalize()} | Generated: {report_date}</em></p>
-    
-    {executive_summary}
     
     {market_table}
     
