@@ -38,7 +38,6 @@ from openbb import obb
 from scripts.utils.caching import (
     save_to_csv,
     OPENBB_DATA_DIR,
-    clear_all_data,
 )
 from scripts.utils.logging import setup_logging
 
@@ -331,10 +330,6 @@ def fetch_all() -> None:
     logger.info("Starting OpenBB data fetch")
     logger.info(f"  Start date: {START_DATE}")
     logger.info("=" * 60)
-    
-    # Clear all existing data to ensure fresh data
-    num_deleted = clear_all_data()
-    logger.info(f"Cleared {num_deleted} existing data files")
     
     fetch_market_indices()
     fetch_commodities()

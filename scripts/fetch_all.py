@@ -30,10 +30,6 @@ def fetch_all() -> None:
     logger.info("=" * 60)
     logger.info("Starting Custom API data fetch")
     logger.info("=" * 60)
-    
-    # Clear all existing data to ensure fresh data
-    num_deleted = clear_all_data()
-    logger.info(f"Cleared {num_deleted} existing data files")
 
     # ECB Data Portal API fetches
     fetch_euribor()
