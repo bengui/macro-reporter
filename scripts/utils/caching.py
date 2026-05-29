@@ -124,10 +124,17 @@ def clear_cache(directory: Union[Path, str] = DATA_DIR) -> int:
     Returns:
         Number of files deleted
     """
+    from itertools import chain
     directory = Path(directory)
     count = 0
     # Clear files recursively in all subdirectories
-    for filepath in directory.rglob("*.csv") + directory.rglob("*.json") + directory.rglob("*.pdf") + directory.rglob("*.html"):
+    # Use chain to combine multiple rglob generators
+    for filepath in chain(
+        directory.rglob("*.csv"),
+        directory.rglob("*.json"),
+        directory.rglob("*.pdf"),
+        directory.rglob("*.html")
+    ):
         filepath.unlink()
         count += 1
     return count

@@ -1146,24 +1146,18 @@ def create_html_report(
         "avg_mortgage_rate": "Average Mortgage Interest Rate",
         "new_mortgage_loans_count": "New Mortgage Loans (Count)",
         "new_mortgage_loans_value": "New Mortgage Loans (Value)",
-        "mortgage_repayment_burden": "Mortgage Repayment Burden",
-        "mortgage_default_rate": "Mortgage Default Rate",
         "house_price_index": "House Price Index (IPV)",
         "fixed_vs_variable_rate_share": "Fixed vs. Variable Rate Share",
-        "mortgage_approval_time": "Mortgage Approval Time",
-        "mortgage_early_repayments": "Mortgage Early Repayments",
+        "mortgage_approval_time": "Mortgage Average Term",
     }
     
     real_estate_value_pct = {
         "avg_mortgage_rate": True,
         "new_mortgage_loans_count": False,
         "new_mortgage_loans_value": False,
-        "mortgage_repayment_burden": True,
-        "mortgage_default_rate": True,
         "house_price_index": False,
         "fixed_vs_variable_rate_share": True,
         "mortgage_approval_time": False,
-        "mortgage_early_repayments": False,
     }
     
     def format_real_estate(name):
@@ -1179,7 +1173,9 @@ def create_html_report(
         source = d.get("source", "")
         full_desc = f"{desc} - {source}" if source else desc
         tooltip_html = f'<span class="tooltiptext">{full_desc}</span>' if full_desc else ''
-        return f'<tr class="tooltip-row"><td>{label}{tooltip_html}</td><td>{val} {unit}</td><td>{chg_1m}</td><td>{chg_1y}</td></tr>'
+        # Only add space and unit if unit is not empty and value is not NA
+        unit_display = f" {unit}" if (unit and val != "NA") else ""
+        return f'<tr class="tooltip-row"><td>{label}{tooltip_html}</td><td>{val}{unit_display}</td><td>{chg_1m}</td><td>{chg_1y}</td></tr>'
     
     # Load Spanish real estate data
     try:
@@ -1193,15 +1189,12 @@ def create_html_report(
     """
     
     real_estate_keys = [
+        "house_price_index",
         "avg_mortgage_rate",
         "new_mortgage_loans_count",
         "new_mortgage_loans_value",
-        "mortgage_repayment_burden",
-        "mortgage_default_rate",
-        "house_price_index",
         "fixed_vs_variable_rate_share",
         "mortgage_approval_time",
-        "mortgage_early_repayments",
     ]
     
     for key in real_estate_keys:
