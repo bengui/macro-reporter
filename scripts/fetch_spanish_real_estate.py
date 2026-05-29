@@ -297,19 +297,22 @@ def fetch_spanish_real_estate() -> None:
     if value_data and value_data.get("value") is not None:
         val = value_data["value"]
         prev = value_data.get("previous")
-        chg_1m = calculate_change(val, prev)
-        chg_1y = calculate_change(val, prev)
+        # Convert from thousands of euros to actual euros
+        val_eur = int(val) * 1000 if val else None
+        prev_eur = int(prev) * 1000 if prev else None
+        chg_1m = calculate_change(val_eur, prev_eur) if val_eur and prev_eur else None
+        chg_1y = calculate_change(val_eur, prev_eur) if val_eur and prev_eur else None
         
         indicators["new_mortgage_loans_value"] = {
-            "value": int(val) if val else None,
-            "previous": int(prev) if prev else None,
+            "value": val_eur,
+            "previous": prev_eur,
             "change_1m": chg_1m, "change_1y": chg_1y,
-            "unit": "€ (thousands)",
-            "description": "Total value of new mortgage loans (thousands of euros)",
+            "unit": "€",
+            "description": "Total value of new mortgage loans",
             "source": "INE (National Statistics Institute)",
             "frequency": "Monthly"
         }
-        logger.info(f"    Value: {int(val) if val else None}K €")
+        logger.info(f"    Value: {val_eur} €")
     else:
         logger.warning("    Could not fetch value")
         indicators["new_mortgage_loans_value"] = {

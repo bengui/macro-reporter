@@ -12,6 +12,7 @@ def format_number(
 ) -> str:
     """
     Format a number with decimal places and thousands separator.
+    For numbers > 1 million, uses M notation (e.g., 1.23M).
     
     Args:
         value: Number to format
@@ -24,6 +25,14 @@ def format_number(
     """
     if value is None:
         return "NA"
+    
+    # Use M notation for numbers > 1 million
+    if abs(value) >= 1_000_000:
+        millions = value / 1_000_000
+        # Limit to 2 decimal places for M notation
+        formatted = f"{millions:.2f}".rstrip('0').rstrip('.') if decimals > 0 else f"{millions:.0f}"
+        return f"{formatted}M"
+    
     return f"{value:,.{decimals}f}".replace(",", "TEMP").replace(".", decimal_sep).replace("TEMP", thousands_sep)
 
 
