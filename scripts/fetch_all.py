@@ -7,7 +7,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.utils.logging import setup_logging
-from scripts.utils.caching import clear_all_data
 
 # Import all fetch functions
 from scripts.fetch_ecb import (

@@ -125,7 +125,7 @@ def format_currency(
 
 def get_traffic_light_signal(
     value: float,
-    thresholds: dict[str, float],
+    thresholds: dict[str, int | float],
 ) -> str:
     """
     Get traffic light signal based on value and thresholds.
@@ -137,6 +137,8 @@ def get_traffic_light_signal(
     Returns:
         Traffic light emoji: 🟢 (green), 🟡 (yellow), 🔴 (red)
     """
+    if value is None:
+        return "🟢"
     if value >= thresholds.get("red", float("inf")):
         return "🔴"
     elif value >= thresholds.get("yellow", float("inf")):
@@ -147,7 +149,7 @@ def get_traffic_light_signal(
 
 def get_traffic_light_signal_higher_better(
     value: float,
-    thresholds: dict[str, float],
+    thresholds: dict[str, int | float],
 ) -> str:
     """
     Get traffic light signal for metrics where higher is better (e.g., GDP growth).
@@ -161,6 +163,8 @@ def get_traffic_light_signal_higher_better(
     Returns:
         Traffic light emoji: 🟢 (green), 🟡 (yellow), 🔴 (red)
     """
+    if value is None:
+        return "🟡"
     if value >= thresholds.get("yellow", float("inf")):
         return "🟢"
     elif value >= thresholds.get("red", float("-inf")):

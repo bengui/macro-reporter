@@ -10,7 +10,6 @@ import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -20,6 +19,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Set API keys as environment variables BEFORE importing obb
 # This is required for OpenBB to pick them up
 from scripts.utils.api_keys import get_api_key
+from openbb import obb
+from scripts.utils.caching import (
+    save_to_csv,
+    OPENBB_DATA_DIR,
+)
+from scripts.utils.logging import setup_logging
 
 FRED_KEY = get_api_key("FRED")
 if FRED_KEY:
@@ -33,14 +38,6 @@ GDELT_KEY = get_api_key("GDELT")
 if GDELT_KEY:
     os.environ["GDELT_API_KEY"] = GDELT_KEY
 
-from openbb import obb
-
-from scripts.utils.caching import (
-    save_to_csv,
-    OPENBB_DATA_DIR,
-)
-from scripts.utils.logging import setup_logging
-
 logger = setup_logging("fetch_openbb")
 
 # Log API key status
@@ -50,10 +47,10 @@ else:
     logger.warning("FRED API key not found. Some data may be unavailable.")
 
 if FMP_KEY:
-    logger.info(f"FMP API key configured")
+    logger.info("FMP API key configured")
 
 if GDELT_KEY:
-    logger.info(f"GDELT API key configured")
+    logger.info("GDELT API key configured")
 
 
 # Configuration
@@ -125,7 +122,7 @@ def fetch_market_indices() -> None:
     for name, symbol in MARKET_INDICES.items():
         try:
             logger.info(f"  Fetching {name} ({symbol})...")
-            data = obb.equity.price.historical(
+            data = obb.equity.price.historical(  # type: ignore
                 symbol=symbol,
                 start_date=START_DATE,
             ).to_df()
@@ -146,7 +143,7 @@ def fetch_commodities() -> None:
     for name, symbol in COMMODITIES.items():
         try:
             logger.info(f"  Fetching {name} ({symbol})...")
-            data = obb.equity.price.historical(
+            data = obb.equity.price.historical(  # type: ignore
                 symbol=symbol,
                 start_date=START_DATE,
             ).to_df()
@@ -167,7 +164,7 @@ def fetch_forex() -> None:
     for name, symbol in FOREX_PAIRS.items():
         try:
             logger.info(f"  Fetching {name} ({symbol})...")
-            data = obb.equity.price.historical(
+            data = obb.equity.price.historical(  # type: ignore
                 symbol=symbol,
                 start_date=START_DATE,
             ).to_df()
@@ -188,12 +185,12 @@ def fetch_macroeconomics() -> None:
     for name, config in MACRO_INDICATORS.items():
         try:
             logger.info(f"  Fetching {name}...")
-            method_name = config["method"]
+            method_name = str(config["method"])
             country = config.get("country", "united_states")
             harmonized = config.get("harmonized", False)
             provider = config.get("provider", None)
             
-            method = getattr(obb.economy, method_name)
+            method = getattr(obb.economy, method_name)  # type: ignore
             kwargs = {"country": country, "harmonized": harmonized}
             if provider:
                 kwargs["provider"] = provider
@@ -216,7 +213,7 @@ def fetch_fred_indicators() -> None:
     for name, series_id in FRED_INDICATORS.items():
         try:
             logger.info(f"  Fetching {name} ({series_id})...")
-            data = obb.economy.fred_series(
+            data = obb.economy.fred_series(  # type: ignore
                 symbol=series_id,
                 start_date=FRED_START_DATE,
             ).to_df()
@@ -239,7 +236,7 @@ def fetch_bonds() -> None:
         try:
             logger.info(f"  Fetching {name}...")
             if method_name == "treasury_rates":
-                data = obb.fixedincome.government.treasury_rates().to_df()
+                data = obb.fixedincome.government.treasury_rates().to_df()  # type: ignore
             else:
                 logger.warning(f"  Unknown method: {method_name}")
                 continue
@@ -271,7 +268,7 @@ def fetch_govt_debt_to_gdp() -> None:
             name = country_to_name.get(country, f"{country}_debt_to_gdp")
             logger.info(f"  Fetching {name}...")
             
-            data = obb.economy.country_profile(country=country).to_df()
+            data = obb.economy.country_profile(country=country).to_df()  # type: ignore
             
             if data.empty or "govt_debt_gdp" not in data.columns:
                 logger.warning(f"  No govt_debt_gdp data for {country}")
@@ -298,7 +295,7 @@ def fetch_gdp_yoy() -> None:
     for country, name in gdp_countries.items():
         try:
             logger.info(f"  Fetching {name}...")
-            data = obb.economy.country_profile(country=country).to_df()
+            data = obb.economy.country_profile(country=country).to_df()  # type: ignore
             
             if data.empty or "gdp_yoy" not in data.columns:
                 logger.warning(f"  No gdp_yoy data for {country}")

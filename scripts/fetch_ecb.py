@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Fetch ECB (European Central Bank) data from Data Portal API."""
 
-import json
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -36,7 +35,7 @@ if FRED_KEY:
 ECB_KEY = get_api_key("ECB")
 if ECB_KEY:
     os.environ["ECB_API_KEY"] = ECB_KEY
-    logger.info(f"ECB API key configured")
+    logger.info("ECB API key configured")
 
 
 def fetch_ecb_series(
@@ -320,7 +319,7 @@ def fetch_bond_spreads() -> None:
             "note": "NA - FRED API key not available",
         }
         save_to_json(spread_data, "bond_spreads", CUSTOM_DATA_DIR)
-        logger.info(f"  Saved bond spreads data (NA)")
+        logger.info("  Saved bond spreads data (NA)")
         return
     
     try:
@@ -335,8 +334,8 @@ def fetch_bond_spreads() -> None:
         # Fetch data from FRED (5 years of history)
         start_date = "2020-01-01"
         
-        spain_df = obb.economy.fred_series(symbol=spain_series, start_date=start_date).to_df()
-        germany_df = obb.economy.fred_series(symbol=germany_series, start_date=start_date).to_df()
+        spain_df = obb.economy.fred_series(symbol=spain_series, start_date=start_date).to_df()  # type: ignore
+        germany_df = obb.economy.fred_series(symbol=germany_series, start_date=start_date).to_df()  # type: ignore
         
         if not spain_df.empty and not germany_df.empty:
             # Get latest values

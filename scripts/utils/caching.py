@@ -1,9 +1,8 @@
 """Caching utilities for macro_reporter."""
 
 import json
-import os
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import pandas as pd
 

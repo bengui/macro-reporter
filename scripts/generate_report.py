@@ -10,7 +10,6 @@ import argparse
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 import matplotlib
@@ -24,14 +23,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from scripts.utils.caching import (
     load_from_csv,
     load_from_json,
-    OPENBB_DATA_DIR,
     CUSTOM_DATA_DIR,
 )
 from scripts.utils.formatting import (
     format_number,
     format_percentage,
     format_date,
-    format_change,
     get_traffic_light_signal,
     get_traffic_light_signal_higher_better,
 )
@@ -44,7 +41,7 @@ REPORTS_DIR = Path(__file__).parent.parent / "reports"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Traffic light thresholds
-THRESHOLDS = {
+THRESHOLDS: dict[str, dict[str, int | float]] = {
     "vix": {"red": 20, "yellow": 15},
     "sp500_change": {"red": -5, "yellow": -2, "green": 2},  # Negative thresholds
     "gold_change": {"red": -5, "yellow": -2},
@@ -612,7 +609,6 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     GRUVBOX_YELLOW = "#fabd2f"
     GRUVBOX_BLUE = "#83a598"
     GRUVBOX_PURPLE = "#d3869b"
-    GRUVBOX_ORANGE = "#fe8019"
     
     # Create sp500 trend chart (365 days)
     try:
@@ -641,15 +637,15 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         ax.spines['right'].set_color(GRUVBOX_FG)
         
         # Show one label per month
-        ax.xaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m'))
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
         plt.tight_layout()
         
         img_path = REPORTS_DIR / "sp500_trend.png"
         fig.savefig(img_path, dpi=300, bbox_inches="tight", facecolor=GRUVBOX_BG)
         plt.close(fig)
         visualizations.append({"title": "S&P 500 Trend", "path": str(img_path)})
-        logger.info(f"  Created S&P 500 trend chart")
+        logger.info("  Created S&P 500 trend chart")
     except Exception as e:
         logger.error(f"  Error creating S&P 500 chart: {e}")
     
@@ -680,15 +676,15 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         ax.spines['right'].set_color(GRUVBOX_FG)
         
         # Show one label per month
-        ax.xaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
-        ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m'))
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
         plt.tight_layout()
         
         img_path = REPORTS_DIR / "stoxx600_trend.png"
         fig.savefig(img_path, dpi=300, bbox_inches="tight", facecolor=GRUVBOX_BG)
         plt.close(fig)
         visualizations.append({"title": "STOXX 600 Trend", "path": str(img_path)})
-        logger.info(f"  Created STOXX 600 trend chart")
+        logger.info("  Created STOXX 600 trend chart")
     except Exception as e:
         logger.error(f"  Error creating STOXX 600 chart: {e}")
     
@@ -719,8 +715,8 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         ax1.grid(True, color=GRUVBOX_GRAY, alpha=0.3)
         
         # Show one label per month
-        ax1.xaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
-        ax1.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m'))
+        ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
         ax1.spines['bottom'].set_color(GRUVBOX_FG)
         ax1.spines['top'].set_color(GRUVBOX_FG)
         ax1.spines['left'].set_color(GRUVBOX_RED)
@@ -741,7 +737,7 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         fig.savefig(img_path, dpi=300, bbox_inches="tight", facecolor=GRUVBOX_BG)
         plt.close(fig)
         visualizations.append({"title": "VIX vs Gold", "path": str(img_path)})
-        logger.info(f"  Created VIX vs Gold chart")
+        logger.info("  Created VIX vs Gold chart")
     except Exception as e:
         logger.error(f"  Error creating VIX vs Gold chart: {e}")
     
@@ -801,15 +797,15 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
                     ax.spines['right'].set_color(GRUVBOX_FG)
                     
                     # Show one label per month to avoid clutter
-                    ax.xaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
-                    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%Y-%m'))
+                    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+                    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
                     plt.tight_layout()
                     
                     img_path = REPORTS_DIR / "euribor_estr_spread.png"
                     fig.savefig(img_path, dpi=300, bbox_inches="tight", facecolor=GRUVBOX_BG)
                     plt.close(fig)
                     visualizations.append({"title": "Euribor 12M - €STR Spread", "path": str(img_path)})
-                    logger.info(f"  Created Euribor 12M - €STR spread chart")
+                    logger.info("  Created Euribor 12M - €STR spread chart")
     except Exception as e:
         logger.error(f"  Error creating Euribor-€STR spread chart: {e}")
     
@@ -982,7 +978,6 @@ def create_html_report(
         d = dashboard[name]
         is_pct = macro_value_pct.get(name, True)
         val = format_percentage(d["value"]) if is_pct else format_number(d["value"])
-        prev = format_percentage(d["previous"]) if is_pct else format_number(d["previous"])
         chg = format_percentage(d["change_1m"])
         sig = signals.get(name, "")
         label = macro_labels.get(name, name.replace('_', ' ').title())
@@ -1038,7 +1033,7 @@ def create_html_report(
         tooltip_html = f'<span class="tooltiptext">{desc}</span>' if desc else ''
         return f'<tr class="tooltip-row"><td>{label}{tooltip_html}</td><td>{val}</td><td>{sig}</td></tr>'
     
-    gdp_yoy_rows = f"""
+    gdp_yoy_rows = """
     <tr><th>Indicator</th><th>Value</th><th>Signal</th></tr>
     """
     gdp_yoy_keys = ['us_gdp_yoy', 'eu_gdp_yoy', 'spain_gdp_yoy']
@@ -1096,7 +1091,7 @@ def create_html_report(
     except Exception:
         real_estate_data = {"indicators": {}}
     
-    real_estate_table_rows = f"""
+    real_estate_table_rows = """
     <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>1Y Change</th></tr>
     """
     
@@ -1351,7 +1346,7 @@ def save_html_report(html: str, report_type: str = "daily") -> Path:
     return filepath
 
 
-def save_pdf_report(html: str, report_type: str = "daily") -> Path:
+def save_pdf_report(html: str, report_type: str = "daily") -> Path | None:
     """Save PDF report using WeasyPrint."""
     try:
         from weasyprint import HTML

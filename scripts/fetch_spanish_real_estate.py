@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Fetch Spanish real estate and mortgage indicators from INE."""
 
-import json
 import sys
 from datetime import datetime
 from pathlib import Path
