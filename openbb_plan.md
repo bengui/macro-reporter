@@ -75,7 +75,7 @@ Copy
    Use OpenBB to fetch:
    | **Category**          | **Data Points**                          | **OpenBB Command**                     |
    |-----------------------|------------------------------------------|----------------------------------------|
-   | Market Indexes        | S&P 500, STOXX 600, MSCI World, VIX      | `obb.indices.market("^GSPC")`           |
+   | Market Indexes        | S&P 500, MSCI Europe, MSCI World, VIX    | `obb.indices.market("^GSPC")`           |
    | Commodities           | Gold, Brent Crude, Copper, Wheat         | `obb.commodities.gold()`                |
    | Forex                 | USD/EUR, USD/CNY, DXY                   | `obb.forex.rates("USD/EUR")`            |
    | Macroeconomics        | US CPI, EU HICP, US/EU GDP, Unemployment | `obb.economy.cpi()`, `obb.economy.gdp()`|

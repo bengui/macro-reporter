@@ -59,7 +59,7 @@ START_DATE = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 # Market indices symbols - using equity.price.historical which works without API keys
 MARKET_INDICES = {
     "sp500": "^GSPC",
-    "stoxx600": "^STOXX50E",  # STOXX Europe 50 (more available)
+    "msci_europe": "IEV",  # iShares Europe ETF (MSCI Europe)
     "msci_world": "URTH",  # iShares MSCI World ETF
     "vix": "^VIX",
 }

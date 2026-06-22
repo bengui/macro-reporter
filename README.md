@@ -108,7 +108,7 @@ Edit the configuration in each script to customize:
 ## Data Sources
 
 ### OpenBB (Core Report)
-- Market Indices: S&P 500, STOXX 600, MSCI World, VIX
+- Market Indices: S&P 500, MSCI Europe, MSCI World, VIX
 - Commodities: Gold, Brent Crude, Copper, Wheat
 - Forex: USD/EUR, USD/CNY, DXY
 - Macroeconomics: US CPI, EU HICP, US/EU GDP, Unemployment

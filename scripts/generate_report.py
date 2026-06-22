@@ -50,6 +50,7 @@ THRESHOLDS: dict[str, dict[str, int | float]] = {
     "unemployment": {"red": 6.0, "yellow": 4.5},  # Unemployment rate
     "treasury_10y": {"red": 5.0, "yellow": 4.0},  # 10Y Treasury yield
     "euribor_12m_estr_spread": {"red": 1.0, "yellow": 0.5},  # Euribor 12M - ECB €STR spread (>100bps=red, 50-100bps=yellow)
+    "euribor_12m": {"red": 5.0, "yellow": 3.5},  # Euribor 12M rate
     "spain_germany_10y_spread": {"red": 2.0, "yellow": 1.0},  # Spain-Germany 10Y spread (>2%=red, 1-2%=yellow)
     "gdp_growth": {"red": -1.0, "yellow": 1.5},  # GDP growth rate
     "gdp_yoy": {"red": -1.0, "yellow": 1.5},  # YoY GDP growth rate
@@ -188,12 +189,61 @@ def get_previous_month_value(obs_list: list) -> float:
         return obs_list[-2]["value"] if len(obs_list) >= 2 else 0.0
 
 
+def get_previous_year_value(obs_list: list) -> float:
+    """
+    Get the value from approximately one year ago from a list of dated observations.
+    Observations should have 'time' (date string) and 'value' keys, sorted oldest first.
+    """
+    if not obs_list or len(obs_list) < 2:
+        return 0.0
+
+    # Get the latest date
+    latest_obs = obs_list[-1]
+    try:
+        from datetime import datetime
+        # Try to parse the latest date
+        try:
+            latest_date = datetime.strptime(latest_obs["time"], "%Y-%m")
+        except ValueError:
+            try:
+                latest_date = datetime.strptime(latest_obs["time"], "%Y-%m-%d")
+            except ValueError:
+                # Relative index - use second to last if we don't have enough data
+                return obs_list[-2]["value"] if len(obs_list) >= 2 else 0.0
+        
+        # Find observation from ~365 days ago
+        target_date = latest_date - timedelta(days=365)
+        
+        # Find the observation closest to but before the target date
+        best_obs = None
+        for obs in reversed(obs_list[:-1]):  # Exclude the latest, check oldest to newest
+            try:
+                obs_date = datetime.strptime(obs["time"], "%Y-%m")
+            except ValueError:
+                try:
+                    obs_date = datetime.strptime(obs["time"], "%Y-%m-%d")
+                except ValueError:
+                    continue
+            
+            if obs_date <= target_date:
+                best_obs = obs
+                break
+        
+        if best_obs:
+            return best_obs["value"]
+        else:
+            # Fallback to second observation from end
+            return obs_list[-2]["value"] if len(obs_list) >= 2 else 0.0
+    except Exception:
+        return obs_list[-2]["value"] if len(obs_list) >= 2 else 0.0
+
+
 def create_market_snapshot() -> dict:
     """Create market snapshot data."""
     snapshot = {}
     
     # Market indices
-    indices = ["sp500", "stoxx600", "msci_world", "vix"]
+    indices = ["sp500", "msci_europe", "msci_world", "vix"]
     for name in indices:
         try:
             df = load_from_csv(name)
@@ -249,14 +299,16 @@ def create_macro_dashboard() -> dict:
         # For monthly data, previous = prior month (1 position back)
         previous = get_previous_value(cpi, days=1) * 100 if len(cpi) >= 2 else 0
         change = calculate_change(cpi, days=1) if len(cpi) >= 2 else 0
+        change_1y = calculate_change(cpi, days=365) if len(cpi) >= 2 else 0
         dashboard["us_cpi"] = {
             "value": latest,
             "previous": previous,
             "change_1m": change,
+            "change_1y": change_1y,
         }
     except Exception as e:
         logger.warning(f"Error loading US CPI: {e}")
-        dashboard["us_cpi"] = {"value": 0, "previous": 0, "change_1m": 0}
+        dashboard["us_cpi"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # Unemployment - Monthly data, use immediate previous month
     # Note: Unemployment data comes as decimals (0.04 = 4%), convert to percentages
@@ -266,14 +318,16 @@ def create_macro_dashboard() -> dict:
         # For monthly data, previous = prior month (1 position back)
         previous = get_previous_value(unemployment, days=1) * 100 if len(unemployment) >= 2 else 0
         change = calculate_change(unemployment, days=1) if len(unemployment) >= 2 else 0
+        change_1y = calculate_change(unemployment, days=365) if len(unemployment) >= 2 else 0
         dashboard["us_unemployment"] = {
             "value": latest,
             "previous": previous,
             "change_1m": change,
+            "change_1y": change_1y,
         }
     except Exception as e:
         logger.warning(f"Error loading US Unemployment: {e}")
-        dashboard["us_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0}
+        dashboard["us_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # EU CPI - Monthly data
     try:
@@ -281,14 +335,16 @@ def create_macro_dashboard() -> dict:
         latest = get_latest_value(eu_cpi) * 100
         previous = get_previous_value(eu_cpi, days=1) * 100 if len(eu_cpi) >= 2 else 0
         change = calculate_change(eu_cpi, days=1) if len(eu_cpi) >= 2 else 0
+        change_1y = calculate_change(eu_cpi, days=365) if len(eu_cpi) >= 2 else 0
         dashboard["eu_cpi"] = {
             "value": latest,
             "previous": previous,
             "change_1m": change,
+            "change_1y": change_1y,
         }
     except Exception as e:
         logger.warning(f"Error loading EU CPI: {e}")
-        dashboard["eu_cpi"] = {"value": 0, "previous": 0, "change_1m": 0}
+        dashboard["eu_cpi"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # EU Unemployment - Monthly data
     try:
@@ -296,14 +352,16 @@ def create_macro_dashboard() -> dict:
         latest = get_latest_value(eu_unemployment) * 100
         previous = get_previous_value(eu_unemployment, days=1) * 100 if len(eu_unemployment) >= 2 else 0
         change = calculate_change(eu_unemployment, days=1) if len(eu_unemployment) >= 2 else 0
+        change_1y = calculate_change(eu_unemployment, days=365) if len(eu_unemployment) >= 2 else 0
         dashboard["eu_unemployment"] = {
             "value": latest,
             "previous": previous,
             "change_1m": change,
+            "change_1y": change_1y,
         }
     except Exception as e:
         logger.warning(f"Error loading EU Unemployment: {e}")
-        dashboard["eu_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0}
+        dashboard["eu_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # Spain CPI - Monthly data
     try:
@@ -311,14 +369,16 @@ def create_macro_dashboard() -> dict:
         latest = get_latest_value(spain_cpi) * 100
         previous = get_previous_value(spain_cpi, days=1) * 100 if len(spain_cpi) >= 2 else 0
         change = calculate_change(spain_cpi, days=1) if len(spain_cpi) >= 2 else 0
+        change_1y = calculate_change(spain_cpi, days=365) if len(spain_cpi) >= 2 else 0
         dashboard["spain_cpi"] = {
             "value": latest,
             "previous": previous,
             "change_1m": change,
+            "change_1y": change_1y,
         }
     except Exception as e:
         logger.warning(f"Error loading Spain CPI: {e}")
-        dashboard["spain_cpi"] = {"value": 0, "previous": 0, "change_1m": 0}
+        dashboard["spain_cpi"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # Spain Unemployment - Monthly data
     try:
@@ -326,14 +386,16 @@ def create_macro_dashboard() -> dict:
         latest = get_latest_value(spain_unemployment) * 100
         previous = get_previous_value(spain_unemployment, days=1) * 100 if len(spain_unemployment) >= 2 else 0
         change = calculate_change(spain_unemployment, days=1) if len(spain_unemployment) >= 2 else 0
+        change_1y = calculate_change(spain_unemployment, days=365) if len(spain_unemployment) >= 2 else 0
         dashboard["spain_unemployment"] = {
             "value": latest,
             "previous": previous,
             "change_1m": change,
+            "change_1y": change_1y,
         }
     except Exception as e:
         logger.warning(f"Error loading Spain Unemployment: {e}")
-        dashboard["spain_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0}
+        dashboard["spain_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # GDP (nominal) - Quarterly data, use immediate previous quarter
     try:
@@ -342,14 +404,16 @@ def create_macro_dashboard() -> dict:
         # For quarterly data, previous = prior quarter (1 position back)
         previous = get_previous_value(gdp, days=1) if len(gdp) >= 2 else 0
         change = calculate_change(gdp, days=1) if len(gdp) >= 2 else 0
+        change_1y = calculate_change(gdp, days=365) if len(gdp) >= 2 else 0
         dashboard["us_gdp"] = {
             "value": latest,
             "previous": previous,
             "change_1m": change,
+            "change_1y": change_1y,
         }
     except Exception as e:
         logger.warning(f"Error loading US GDP: {e}")
-        dashboard["us_gdp"] = {"value": 0, "previous": 0, "change_1m": 0}
+        dashboard["us_gdp"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # GDP Real - Quarterly data, use immediate previous quarter
     try:
@@ -358,14 +422,16 @@ def create_macro_dashboard() -> dict:
         # For quarterly data, previous = prior quarter (1 position back)
         previous = get_previous_value(gdp_real, days=1) if len(gdp_real) >= 2 else 0
         change = calculate_change(gdp_real, days=1) if len(gdp_real) >= 2 else 0
+        change_1y = calculate_change(gdp_real, days=365) if len(gdp_real) >= 2 else 0
         dashboard["us_gdp_real"] = {
             "value": latest,
             "previous": previous,
             "change_1m": change,
+            "change_1y": change_1y,
         }
     except Exception as e:
         logger.warning(f"Error loading US GDP Real: {e}")
-        dashboard["us_gdp_real"] = {"value": 0, "previous": 0, "change_1m": 0}
+        dashboard["us_gdp_real"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # GDP YoY (Year-over-Year growth rate) - from country_profile
     gdp_yoy_countries = ["us_gdp_yoy", "eu_gdp_yoy", "spain_gdp_yoy"]
@@ -376,16 +442,18 @@ def create_macro_dashboard() -> dict:
                 # The CSV has a gdp_yoy column with the value
                 latest = get_latest_value(gdp_data, "gdp_yoy") * 100  # Convert to percentage
                 # For YoY data, we don't have history in the current format
+                change_1y = calculate_change(gdp_data, "gdp_yoy", days=365) if len(gdp_data) >= 2 else 0
                 dashboard[name] = {
                     "value": latest,
                     "previous": 0,
                     "change_1m": 0,
+                    "change_1y": change_1y,
                 }
             else:
-                dashboard[name] = {"value": 0, "previous": 0, "change_1m": 0}
+                dashboard[name] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
         except Exception as e:
             logger.warning(f"Error loading {name}: {e}")
-            dashboard[name] = {"value": 0, "previous": 0, "change_1m": 0}
+            dashboard[name] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # ECB Yield Curve (from custom data)
     try:
@@ -397,6 +465,8 @@ def create_macro_dashboard() -> dict:
                 change_1m = 0
                 # Get historical observations for this maturity
                 obs_list = history.get(maturity, [])
+                prev_1y_val = 0
+                change_1y = 0
                 if obs_list and len(obs_list) >= 2:
                     # Observations are sorted oldest first, newest last
                     # Use helper to find value from ~1 month ago
@@ -404,10 +474,15 @@ def create_macro_dashboard() -> dict:
                     # Calculate change from previous month
                     if prev_val != 0:
                         change_1m = ((value - prev_val) / abs(prev_val)) * 100
+                    # Use helper to find value from ~1 year ago
+                    prev_1y_val = get_previous_year_value(obs_list)
+                    if prev_1y_val != 0:
+                        change_1y = ((value - prev_1y_val) / abs(prev_1y_val)) * 100
                 dashboard[f"ecb_yield_{maturity.lower()}"] = {
                     "value": value,
                     "previous": prev_val,
                     "change_1m": change_1m,
+                    "change_1y": change_1y,
                 }
     except Exception as e:
         logger.warning(f"Error loading ECB yield curve: {e}")
@@ -424,6 +499,7 @@ def create_macro_dashboard() -> dict:
                     continue
                 prev_val = 0
                 change_1m = 0
+                change_1y = 0
                 # Get historical observations for this rate
                 obs_list = history.get(name, [])
                 if obs_list and len(obs_list) >= 2:
@@ -433,10 +509,15 @@ def create_macro_dashboard() -> dict:
                     # Calculate change from previous month
                     if prev_val != 0:
                         change_1m = ((value - prev_val) / abs(prev_val)) * 100
+                    # Use helper to find value from ~1 year ago
+                    prev_1y_val = get_previous_year_value(obs_list)
+                    if prev_1y_val != 0:
+                        change_1y = ((value - prev_1y_val) / abs(prev_1y_val)) * 100
                 dashboard[f"ecb_{name.lower()}"] = {
                     "value": value,
                     "previous": prev_val,
                     "change_1m": change_1m,
+                    "change_1y": change_1y,
                 }
     except Exception as e:
         logger.warning(f"Error loading ECB reference rates: {e}")
@@ -457,10 +538,12 @@ def create_macro_dashboard() -> dict:
             latest = get_latest_value(treasury, treasury_col) * 100
             previous = get_previous_value(treasury, treasury_col, 30) * 100
             change = calculate_change(treasury, treasury_col, 30)
+            change_1y = calculate_change(treasury, treasury_col, 365)
             dashboard["treasury_10y"] = {
                 "value": latest,
                 "previous": previous,
                 "change_1m": change,
+                "change_1y": change_1y,
             }
         else:
             # Try to find any column with '10' in it
@@ -469,17 +552,19 @@ def create_macro_dashboard() -> dict:
                     latest = get_latest_value(treasury, col) * 100
                     previous = get_previous_value(treasury, col, 30) * 100
                     change = calculate_change(treasury, col, 30)
+                    change_1y = calculate_change(treasury, col, 365)
                     dashboard["treasury_10y"] = {
                         "value": latest,
                         "previous": previous,
                         "change_1m": change,
+                        "change_1y": change_1y,
                     }
                     break
             else:
-                dashboard["treasury_10y"] = {"value": 0, "previous": 0, "change_1m": 0}
+                dashboard["treasury_10y"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
         logger.warning(f"Error loading Treasury rates: {e}")
-        dashboard["treasury_10y"] = {"value": 0, "previous": 0, "change_1m": 0}
+        dashboard["treasury_10y"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # Euribor 12M - ECB €STR spread (from custom data)
     try:
@@ -510,6 +595,41 @@ def create_macro_dashboard() -> dict:
                     if "ESTR" in key or "STR" in key:
                         estr = value
                         break
+        
+        # Add Euribor 12M as a separate indicator
+        if euribor_12m > 0:
+            euribor_12m_prev = 0
+            euribor_12m_change_1m = 0
+            euribor_12m_change_1y = 0
+            
+            # Get Euribor 12M history for previous month calculation
+            euribor_12m_obs = None
+            if "EURIBOR_12M" in euribor.get("history", {}):
+                euribor_12m_obs = euribor["history"]["EURIBOR_12M"]
+            else:
+                for key, obs_list in euribor.get("history", {}).items():
+                    if "12M" in key or "12MONTH" in key:
+                        euribor_12m_obs = obs_list
+                        break
+            
+            # Calculate previous month value and change
+            if euribor_12m_obs and len(euribor_12m_obs) >= 2:
+                euribor_12m_prev = get_previous_month_value(euribor_12m_obs)
+                if euribor_12m_prev > 0:
+                    euribor_12m_change_1m = ((euribor_12m - euribor_12m_prev) / abs(euribor_12m_prev)) * 100
+                # Calculate 1-year change
+                euribor_12m_prev_1y = get_previous_year_value(euribor_12m_obs)
+                if euribor_12m_prev_1y > 0:
+                    euribor_12m_change_1y = ((euribor_12m - euribor_12m_prev_1y) / abs(euribor_12m_prev_1y)) * 100
+            
+            dashboard["euribor_12m"] = {
+                "value": euribor_12m,
+                "previous": euribor_12m_prev,
+                "change_1m": euribor_12m_change_1m,
+                "change_1y": euribor_12m_change_1y,
+            }
+        else:
+            dashboard["euribor_12m"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
         
         # Calculate spread
         if euribor_12m > 0 and estr > 0:
@@ -545,7 +665,8 @@ def create_macro_dashboard() -> dict:
                         estr_obs = obs_list
                         break
             
-            # If we have history for both, calculate previous month spread
+            change_1y = 0
+            # If we have history for both, calculate previous month spread and 1-year spread
             if euribor_12m_obs and estr_obs and len(euribor_12m_obs) >= 2 and len(estr_obs) >= 2:
                 prev_euribor_12m = get_previous_month_value(euribor_12m_obs)
                 prev_estr = get_previous_month_value(estr_obs)
@@ -553,17 +674,25 @@ def create_macro_dashboard() -> dict:
                     prev_spread = prev_euribor_12m - prev_estr
                     if prev_spread != 0:
                         change_1m = ((spread - prev_spread) / abs(prev_spread)) * 100
+                # Calculate 1-year spread change - only if we have sufficient history
+                prev_euribor_12m_1y = get_previous_year_value(euribor_12m_obs)
+                prev_estr_1y = get_previous_year_value(estr_obs)
+                if prev_euribor_12m_1y > 0 and prev_estr_1y > 0:
+                    prev_spread_1y = prev_euribor_12m_1y - prev_estr_1y
+                    if prev_spread_1y != 0:
+                        change_1y = ((spread - prev_spread_1y) / abs(prev_spread_1y)) * 100
             
             dashboard["euribor_12m_estr_spread"] = {
                 "value": spread,
                 "previous": prev_spread,
                 "change_1m": change_1m,
+                "change_1y": change_1y,
             }
         else:
-            dashboard["euribor_12m_estr_spread"] = {"value": 0, "previous": 0, "change_1m": 0}
+            dashboard["euribor_12m_estr_spread"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
         logger.warning(f"Error loading Euribor spread: {e}")
-        dashboard["euribor_12m_estr_spread"] = {"value": 0, "previous": 0, "change_1m": 0}
+        dashboard["euribor_12m_estr_spread"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # Spanish-German 10Y bond spread (from custom data)
     try:
@@ -574,6 +703,7 @@ def create_macro_dashboard() -> dict:
             
             prev_spread = 0
             change_1m = 0
+            change_1y = 0
             
             # Get spread history and calculate previous month value
             spread_obs = history.get("spread", [])
@@ -581,17 +711,22 @@ def create_macro_dashboard() -> dict:
                 prev_spread = get_previous_month_value(spread_obs)
                 if prev_spread != 0:
                     change_1m = ((spread - prev_spread) / abs(prev_spread)) * 100
+                # Calculate 1-year change
+                prev_spread_1y = get_previous_year_value(spread_obs)
+                if prev_spread_1y != 0:
+                    change_1y = ((spread - prev_spread_1y) / abs(prev_spread_1y)) * 100
             
             dashboard["spain_germany_10y_spread"] = {
                 "value": spread,
                 "previous": prev_spread,
                 "change_1m": change_1m,
+                "change_1y": change_1y,
             }
         else:
-            dashboard["spain_germany_10y_spread"] = {"value": 0, "previous": 0, "change_1m": 0}
+            dashboard["spain_germany_10y_spread"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
         logger.warning(f"Error loading bond spreads: {e}")
-        dashboard["spain_germany_10y_spread"] = {"value": 0, "previous": 0, "change_1m": 0}
+        dashboard["spain_germany_10y_spread"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     return dashboard
 
@@ -649,22 +784,22 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     except Exception as e:
         logger.error(f"  Error creating S&P 500 chart: {e}")
     
-    # Create STOXX 600 trend chart (365 days)
+    # Create MSCI Europe trend chart (365 days)
     try:
-        stoxx600 = load_from_csv("stoxx600")
+        msci_europe = load_from_csv("msci_europe")
         # Convert date strings to datetime for proper plotting
-        stoxx600["date"] = pd.to_datetime(stoxx600["date"])
+        msci_europe["date"] = pd.to_datetime(msci_europe["date"])
         # Filter to last 365 days
         cutoff = datetime.now() - timedelta(days=365)
-        stoxx600 = stoxx600[stoxx600["date"] >= cutoff]
+        msci_europe = msci_europe[msci_europe["date"] >= cutoff]
         
         fig, ax = plt.subplots(figsize=(10, 4))
         
         # Gruvbox styling
         fig.patch.set_facecolor(GRUVBOX_BG)
         ax.set_facecolor(GRUVBOX_BG)
-        ax.plot(stoxx600["date"], stoxx600["close"], label="STOXX 600", color=GRUVBOX_GREEN, linewidth=2)
-        ax.set_title("STOXX 600 Price Trend (1 Year)", color=GRUVBOX_FG)
+        ax.plot(msci_europe["date"], msci_europe["close"], label="MSCI Europe", color=GRUVBOX_GREEN, linewidth=2)
+        ax.set_title("MSCI Europe Price Trend (1 Year)", color=GRUVBOX_FG)
         ax.set_xlabel("Date", color=GRUVBOX_FG)
         ax.set_ylabel("Price", color=GRUVBOX_FG)
         ax.legend(facecolor=GRUVBOX_BG, labelcolor=GRUVBOX_FG)
@@ -680,13 +815,13 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
         plt.tight_layout()
         
-        img_path = REPORTS_DIR / "stoxx600_trend.png"
+        img_path = REPORTS_DIR / "msci_europe_trend.png"
         fig.savefig(img_path, dpi=300, bbox_inches="tight", facecolor=GRUVBOX_BG)
         plt.close(fig)
-        visualizations.append({"title": "STOXX 600 Trend", "path": str(img_path)})
-        logger.info("  Created STOXX 600 trend chart")
+        visualizations.append({"title": "MSCI Europe Trend", "path": str(img_path)})
+        logger.info("  Created MSCI Europe trend chart")
     except Exception as e:
-        logger.error(f"  Error creating STOXX 600 chart: {e}")
+        logger.error(f"  Error creating MSCI Europe chart: {e}")
     
     # Create VIX vs Gold chart (365 days)
     try:
@@ -825,7 +960,7 @@ def create_html_report(
     signals = {
         "vix": get_traffic_light_signal(snapshot["vix"]["value"], THRESHOLDS["vix"]),
         "sp500": get_traffic_light_signal(snapshot["sp500"]["change_1m"], {"red": -5, "yellow": -2}),
-        "stoxx600": get_traffic_light_signal(snapshot["stoxx600"]["change_1m"], {"red": -5, "yellow": -2}),
+        "msci_europe": get_traffic_light_signal(snapshot["msci_europe"]["change_1m"], {"red": -5, "yellow": -2}),
         "msci_world": get_traffic_light_signal(snapshot["msci_world"]["change_1m"], {"red": -5, "yellow": -2}),
         "gold": get_traffic_light_signal(snapshot["gold"]["change_1m"], THRESHOLDS["gold_change"]),
         "brent_crude": get_traffic_light_signal(snapshot["brent_crude"]["change_1m"], THRESHOLDS["gold_change"]),
@@ -840,6 +975,7 @@ def create_html_report(
         "spain_cpi": get_traffic_light_signal(dashboard.get("spain_cpi", {}).get("value", 0), THRESHOLDS["cpi"]),
         "spain_unemployment": get_traffic_light_signal(dashboard.get("spain_unemployment", {}).get("value", 0), THRESHOLDS["unemployment"]),
         "treasury_10y": get_traffic_light_signal(dashboard["treasury_10y"]["value"], THRESHOLDS["treasury_10y"]),
+        "euribor_12m": get_traffic_light_signal(dashboard.get("euribor_12m", {}).get("value", 0), THRESHOLDS["euribor_12m"]),
         "euribor_12m_estr_spread": get_traffic_light_signal(dashboard.get("euribor_12m_estr_spread", {}).get("value", 0), THRESHOLDS["euribor_12m_estr_spread"]),
         "spain_germany_10y_spread": get_traffic_light_signal(dashboard.get("spain_germany_10y_spread", {}).get("value", 0), THRESHOLDS["spain_germany_10y_spread"]),
         "us_gdp": get_traffic_light_signal(dashboard["us_gdp"]["change_1m"], THRESHOLDS["gdp_growth"]),
@@ -870,6 +1006,7 @@ def create_html_report(
         "eu_gdp_yoy": "EU GDP YoY",
         "spain_gdp_yoy": "Spain GDP YoY",
         "treasury_10y": "US 10Y Treasury",
+        "euribor_12m": "Euribor 12M",
         "euribor_12m_estr_spread": "Euribor 12M - €STR Spread",
         "spain_germany_10y_spread": "Spain-Germany 10Y Spread",
         "ecb_yield_1y": "ECB 1Y Yield",
@@ -890,12 +1027,13 @@ def create_html_report(
         "eu_gdp_yoy": "EU GDP Year-over-Year Growth Rate - Percentage change in real GDP compared to the same quarter in the previous year. Source: Eurostat.",
         "spain_gdp_yoy": "Spain GDP Year-over-Year Growth Rate - Percentage change in real GDP compared to the same quarter in the previous year. Source: Spain INE.",
         "treasury_10y": "US 10-Year Treasury Yield - Interest rate on US government debt maturing in 10 years. Source: US Treasury.",
+        "euribor_12m": "Euribor 12M - 12-month Euribor rate. The rate at which European banks lend to one another. Source: EMMI.",
         "euribor_12m_estr_spread": "Euribor 12M - €STR Spread - Difference between the 12-month Euribor rate and the ECB's Euro Short-Term Rate (€STR). Measures bank lending premium over ECB policy rate.",
         "spain_germany_10y_spread": "Spain-Germany 10Y Sovereign Bond Spread - Difference between Spanish and German 10-year government bond yields. Measures sovereign risk premium.",
         "ecb_yield_1y": "ECB 1-Year Government Bond Yield - Yield on euro area government bonds with 1-year maturity. Source: ECB.",
         "ecb_yield_10y": "ECB 10-Year Government Bond Yield - Yield on euro area government bonds with 10-year maturity. Source: ECB.",
         "sp500": "S&P 500 Index - US stock market index tracking 500 large-cap companies. Source: Yahoo Finance.",
-        "stoxx600": "STOXX 600 Index - European stock market index tracking 600 large-cap companies across 17 countries. Source: STOXX.",
+        "msci_europe": "MSCI Europe Index - European stock market index tracking large and mid-cap companies across developed European markets. Source: MSCI.",
         "msci_world": "MSCI World Index - Global stock market index tracking large and mid-cap companies across developed markets. Source: MSCI.",
         "vix": "CBOE Volatility Index (VIX) - Market's expectation of 30-day forward-looking volatility for the S&P 500. Known as the 'fear index'.",
         "gold": "Gold Price - Spot price of gold per ounce. Source: LBMA via Yahoo Finance.",
@@ -909,7 +1047,7 @@ def create_html_report(
     # Market snapshot table - label mapping for better display
     metric_labels = {
         "sp500": "S&P 500",
-        "stoxx600": "STOXX 600",
+        "msci_europe": "MSCI Europe",
         "msci_world": "MSCI World",
         "vix": "VIX",
         "gold": "Gold",
@@ -934,7 +1072,7 @@ def create_html_report(
     market_table_rows = f"""
     <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>1Y Change</th><th>Signal</th></tr>
     {format_metric('sp500', 'value', 'change_1m', 'change_1y')}
-    {format_metric('stoxx600', 'value', 'change_1m', 'change_1y')}
+    {format_metric('msci_europe', 'value', 'change_1m', 'change_1y')}
     {format_metric('msci_world', 'value', 'change_1m', 'change_1y')}
     {format_metric('vix', 'value', 'change_1m', 'change_1y')}
     {format_metric('gold', 'value', 'change_1m', 'change_1y')}
@@ -967,6 +1105,7 @@ def create_html_report(
         "eu_gdp_yoy": True,
         "spain_gdp_yoy": True,
         "treasury_10y": True,
+        "euribor_12m": True,
         "euribor_12m_estr_spread": True,
         "spain_germany_10y_spread": True,
         "ecb_yield_1y": True,
@@ -977,16 +1116,17 @@ def create_html_report(
         """Helper to format a macroeconomic row."""
         d = dashboard[name]
         is_pct = macro_value_pct.get(name, True)
-        val = format_percentage(d["value"]) if is_pct else format_number(d["value"])
-        chg = format_percentage(d["change_1m"])
+        val = format_percentage(d["value"], show_sign=False) if is_pct else format_number(d["value"])
+        chg_1m = format_percentage(d["change_1m"])
+        chg_1y = format_percentage(d["change_1y"], decimals=2) if d.get("change_1y") != 0 else "NA"
         sig = signals.get(name, "")
         label = macro_labels.get(name, name.replace('_', ' ').title())
         desc = indicator_descriptions.get(name, "")
         tooltip_html = f'<span class="tooltiptext">{desc}</span>' if desc else ''
-        return f'<tr class="tooltip-row"><td>{label}{tooltip_html}</td><td>{val}</td><td>{chg}</td><td>{sig}</td></tr>'
+        return f'<tr class="tooltip-row"><td>{label}{tooltip_html}</td><td>{val}</td><td>{chg_1m}</td><td>{chg_1y}</td><td>{sig}</td></tr>'
     
     macro_table_rows = f"""
-    <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>Signal</th></tr>
+    <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>1Y Change</th><th>Signal</th></tr>
     {format_macro('us_cpi')}
     {format_macro('us_unemployment')}
     {format_macro('treasury_10y')}
@@ -999,6 +1139,10 @@ def create_html_report(
     for key in ecb_keys:
         if key in dashboard:
             macro_table_rows += format_macro(key)
+    
+    # Add Euribor 12M (grouped with ECB data)
+    if "euribor_12m" in dashboard:
+        macro_table_rows += format_macro('euribor_12m')
     
     # Add Euribor spread (grouped with ECB data)
     if "euribor_12m_estr_spread" in dashboard:
@@ -1026,7 +1170,7 @@ def create_html_report(
         """Helper to format a GDP YoY row with only value and signal."""
         d = dashboard[name]
         is_pct = macro_value_pct.get(name, True)
-        val = format_percentage(d["value"]) if is_pct else format_number(d["value"])
+        val = format_percentage(d["value"], show_sign=False) if is_pct else format_number(d["value"])
         sig = signals.get(name, "")
         label = macro_labels.get(name, name.replace('_', ' ').title())
         desc = indicator_descriptions.get(name, "")
@@ -1071,7 +1215,7 @@ def create_html_report(
         """Helper to format a real estate row."""
         d = real_estate_data.get("indicators", {}).get(name, {})
         is_pct = real_estate_value_pct.get(name, True)
-        val = format_percentage(d.get("value")) if is_pct else format_number(d.get("value"))
+        val = format_percentage(d.get("value"), show_sign=False) if is_pct else format_number(d.get("value"))
         chg_1m = format_percentage(d.get("change_1m"))
         chg_1y = format_percentage(d.get("change_1y"))
         label = real_estate_labels.get(name, name.replace('_', ' ').title())
