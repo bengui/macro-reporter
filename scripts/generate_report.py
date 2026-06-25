@@ -243,7 +243,7 @@ def create_market_snapshot() -> dict:
     snapshot = {}
     
     # Market indices
-    indices = ["sp500", "msci_europe", "msci_world", "vix"]
+    indices = ["sp500", "stoxx600", "msci_world", "vix"]
     for name in indices:
         try:
             df = load_from_csv(name)
@@ -784,22 +784,22 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     except Exception as e:
         logger.error(f"  Error creating S&P 500 chart: {e}")
     
-    # Create MSCI Europe trend chart (365 days)
+    # Create STOXX 600 trend chart (365 days)
     try:
-        msci_europe = load_from_csv("msci_europe")
+        stoxx600 = load_from_csv("stoxx600")
         # Convert date strings to datetime for proper plotting
-        msci_europe["date"] = pd.to_datetime(msci_europe["date"])
+        stoxx600["date"] = pd.to_datetime(stoxx600["date"])
         # Filter to last 365 days
         cutoff = datetime.now() - timedelta(days=365)
-        msci_europe = msci_europe[msci_europe["date"] >= cutoff]
+        stoxx600 = stoxx600[stoxx600["date"] >= cutoff]
         
         fig, ax = plt.subplots(figsize=(10, 4))
         
         # Gruvbox styling
         fig.patch.set_facecolor(GRUVBOX_BG)
         ax.set_facecolor(GRUVBOX_BG)
-        ax.plot(msci_europe["date"], msci_europe["close"], label="MSCI Europe", color=GRUVBOX_GREEN, linewidth=2)
-        ax.set_title("MSCI Europe Price Trend (1 Year)", color=GRUVBOX_FG)
+        ax.plot(stoxx600["date"], stoxx600["close"], label="STOXX 600", color=GRUVBOX_GREEN, linewidth=2)
+        ax.set_title("STOXX 600 Price Trend (1 Year)", color=GRUVBOX_FG)
         ax.set_xlabel("Date", color=GRUVBOX_FG)
         ax.set_ylabel("Price", color=GRUVBOX_FG)
         ax.legend(facecolor=GRUVBOX_BG, labelcolor=GRUVBOX_FG)
@@ -815,13 +815,13 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
         plt.tight_layout()
         
-        img_path = REPORTS_DIR / "msci_europe_trend.png"
+        img_path = REPORTS_DIR / "stoxx600_trend.png"
         fig.savefig(img_path, dpi=300, bbox_inches="tight", facecolor=GRUVBOX_BG)
         plt.close(fig)
-        visualizations.append({"title": "MSCI Europe Trend", "path": str(img_path)})
-        logger.info("  Created MSCI Europe trend chart")
+        visualizations.append({"title": "STOXX 600 Trend", "path": str(img_path)})
+        logger.info("  Created STOXX 600 trend chart")
     except Exception as e:
-        logger.error(f"  Error creating MSCI Europe chart: {e}")
+        logger.error(f"  Error creating STOXX 600 chart: {e}")
     
     # Create VIX vs Gold chart (365 days)
     try:
@@ -960,7 +960,7 @@ def create_html_report(
     signals = {
         "vix": get_traffic_light_signal(snapshot["vix"]["value"], THRESHOLDS["vix"]),
         "sp500": get_traffic_light_signal(snapshot["sp500"]["change_1m"], {"red": -5, "yellow": -2}),
-        "msci_europe": get_traffic_light_signal(snapshot["msci_europe"]["change_1m"], {"red": -5, "yellow": -2}),
+        "stoxx600": get_traffic_light_signal(snapshot["stoxx600"]["change_1m"], {"red": -5, "yellow": -2}),
         "msci_world": get_traffic_light_signal(snapshot["msci_world"]["change_1m"], {"red": -5, "yellow": -2}),
         "gold": get_traffic_light_signal(snapshot["gold"]["change_1m"], THRESHOLDS["gold_change"]),
         "brent_crude": get_traffic_light_signal(snapshot["brent_crude"]["change_1m"], THRESHOLDS["gold_change"]),
@@ -1033,7 +1033,7 @@ def create_html_report(
         "ecb_yield_1y": "ECB 1-Year Government Bond Yield - Yield on euro area government bonds with 1-year maturity. Source: ECB.",
         "ecb_yield_10y": "ECB 10-Year Government Bond Yield - Yield on euro area government bonds with 10-year maturity. Source: ECB.",
         "sp500": "S&P 500 Index - US stock market index tracking 500 large-cap companies. Source: Yahoo Finance.",
-        "msci_europe": "MSCI Europe Index - European stock market index tracking large and mid-cap companies across developed European markets. Source: MSCI.",
+        "stoxx600": "STOXX 600 Index - European stock market index tracking 600 large-cap companies across 17 countries. Source: STOXX.",
         "msci_world": "MSCI World Index - Global stock market index tracking large and mid-cap companies across developed markets. Source: MSCI.",
         "vix": "CBOE Volatility Index (VIX) - Market's expectation of 30-day forward-looking volatility for the S&P 500. Known as the 'fear index'.",
         "gold": "Gold Price - Spot price of gold per ounce. Source: LBMA via Yahoo Finance.",
@@ -1047,7 +1047,7 @@ def create_html_report(
     # Market snapshot table - label mapping for better display
     metric_labels = {
         "sp500": "S&P 500",
-        "msci_europe": "MSCI Europe",
+        "stoxx600": "STOXX 600",
         "msci_world": "MSCI World",
         "vix": "VIX",
         "gold": "Gold",
@@ -1072,7 +1072,7 @@ def create_html_report(
     market_table_rows = f"""
     <tr><th>Indicator</th><th>Value</th><th>1M Change</th><th>1Y Change</th><th>Signal</th></tr>
     {format_metric('sp500', 'value', 'change_1m', 'change_1y')}
-    {format_metric('msci_europe', 'value', 'change_1m', 'change_1y')}
+    {format_metric('stoxx600', 'value', 'change_1m', 'change_1y')}
     {format_metric('msci_world', 'value', 'change_1m', 'change_1y')}
     {format_metric('vix', 'value', 'change_1m', 'change_1y')}
     {format_metric('gold', 'value', 'change_1m', 'change_1y')}
