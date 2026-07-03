@@ -1330,26 +1330,17 @@ def create_html_report(
         table:nth-of-type(1) td:nth-child(4) { width: 15%; }
         table:nth-of-type(1) th:nth-child(5),
         table:nth-of-type(1) td:nth-child(5) { width: 20%; }
-        /* 5-column table (Market Snapshot) */
-        table:nth-of-type(1) th:nth-child(1),
-        table:nth-of-type(1) td:nth-child(1) { width: 30%; }
-        table:nth-of-type(1) th:nth-child(2),
-        table:nth-of-type(1) td:nth-child(2) { width: 20%; }
-        table:nth-of-type(1) th:nth-child(3),
-        table:nth-of-type(1) td:nth-child(3) { width: 15%; }
-        table:nth-of-type(1) th:nth-child(4),
-        table:nth-of-type(1) td:nth-child(4) { width: 15%; }
-        table:nth-of-type(1) th:nth-child(5),
-        table:nth-of-type(1) td:nth-child(5) { width: 20%; }
-        /* 4-column table (Macroeconomic Dashboard) */
+        /* 5-column table (Macroeconomic Dashboard) */
         table:nth-of-type(2) th:nth-child(1),
-        table:nth-of-type(2) td:nth-child(1) { width: 40%; }
+        table:nth-of-type(2) td:nth-child(1) { width: 30%; }
         table:nth-of-type(2) th:nth-child(2),
         table:nth-of-type(2) td:nth-child(2) { width: 20%; }
         table:nth-of-type(2) th:nth-child(3),
-        table:nth-of-type(2) td:nth-child(3) { width: 20%; }
+        table:nth-of-type(2) td:nth-child(3) { width: 15%; }
         table:nth-of-type(2) th:nth-child(4),
-        table:nth-of-type(2) td:nth-child(4) { width: 20%; }
+        table:nth-of-type(2) td:nth-child(4) { width: 15%; }
+        table:nth-of-type(2) th:nth-child(5),
+        table:nth-of-type(2) td:nth-child(5) { width: 20%; }
         /* 3-column table (GDP YoY) */
         table:nth-of-type(3) th:nth-child(1),
         table:nth-of-type(3) td:nth-child(1) { width: 50%; }
