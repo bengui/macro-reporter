@@ -1015,11 +1015,11 @@ def create_html_report(
     
     # Indicator descriptions for tooltips
     indicator_descriptions = {
-        "us_cpi": "US Consumer Price Index (CPI) - Monthly inflation rate measuring the average change over time in the prices paid by consumers for goods and services. Source: US Bureau of Labor Statistics.",
+        "us_cpi": "US Consumer Price Index (CPI) - Year-over-year inflation rate measuring the average change over time in the prices paid by consumers for goods and services. Source: US Bureau of Labor Statistics.",
         "us_unemployment": "US Unemployment Rate - Percentage of the labor force without work but available for and seeking employment. Source: US Bureau of Labor Statistics.",
-        "eu_cpi": "Euro Area Consumer Price Index (CPI) - Monthly inflation rate for the euro area. Source: Eurostat via ECB.",
+        "eu_cpi": "Euro Area Consumer Price Index (CPI) - Year-over-year inflation rate for the euro area. Source: Eurostat via ECB.",
         "eu_unemployment": "Euro Area Unemployment Rate - Percentage of the labor force without work. Source: Eurostat.",
-        "spain_cpi": "Spain Consumer Price Index (CPI) - Monthly inflation rate. Source: Spain INE.",
+        "spain_cpi": "Spain Consumer Price Index (CPI) - Year-over-year inflation rate. Source: Spain INE.",
         "spain_unemployment": "Spain Unemployment Rate - Percentage of the labor force without work. Source: Spain INE.",
         "us_gdp": "US GDP (Nominal) - Gross Domestic Product at current prices in billions. Source: US Bureau of Economic Analysis.",
         "us_gdp_real": "US GDP (Real) - Gross Domestic Product adjusted for inflation. Source: US Bureau of Economic Analysis.",
