@@ -12,11 +12,13 @@ def format_number(
 ) -> str:
     """
     Format a number with decimal places and thousands separator.
-    For numbers > 1 million, uses M notation (e.g., 1.23M).
+    For numbers > 1 million, uses M notation (e.g., 2M).
+    For displayed values >= 100, does not display decimals.
+    Uses thousand separators in M notation (e.g., 1,000M for one billion).
     
     Args:
         value: Number to format
-        decimals: Number of decimal places
+        decimals: Number of decimal places (overridden for displayed values >= 100)
         thousands_sep: Thousands separator
         decimal_sep: Decimal separator
     
@@ -27,12 +29,22 @@ def format_number(
         return "NA"
     
     # Use M notation for numbers > 1 million
-    if abs(value) >= 1_000_000:
+    if abs(value) > 1_000_000:
         millions = value / 1_000_000
-        # Limit to 2 decimal places for M notation
-        formatted = f"{millions:.2f}".rstrip('0').rstrip('.') if decimals > 0 else f"{millions:.0f}"
+        # For millions >= 100, use thousand separators and no decimals
+        if abs(millions) >= 100:
+            formatted = f"{int(millions):,}".replace(",", "TEMP").replace(".", decimal_sep).replace("TEMP", thousands_sep)
+        else:
+            # For millions < 100, can show decimals
+            # Strip trailing zeros but keep at least one decimal if not whole
+            formatted = f"{millions:.2f}".rstrip('0').rstrip('.')
         return f"{formatted}M"
     
+    # For numbers >= 100 but <= 1 million, show without decimals with thousand separators
+    if abs(value) >= 100:
+        return f"{int(value):,}".replace(",", "TEMP").replace(".", decimal_sep).replace("TEMP", thousands_sep)
+    
+    # For numbers < 100, use the specified decimals
     return f"{value:,.{decimals}f}".replace(",", "TEMP").replace(".", decimal_sep).replace("TEMP", thousands_sep)
 
 
