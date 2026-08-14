@@ -139,6 +139,58 @@ For weekly reports on Mondays:
 
 Create a scheduled task to run the scripts at your desired frequency.
 
+## GitHub Pages
+
+The report is published to a GitHub Pages site under this repository so the
+latest results can be viewed in a browser. A GitHub Actions workflow
+(`.github/workflows/publish-report.yml`) fetches fresh data, regenerates the
+report, and deploys it to GitHub Pages automatically.
+
+**Schedule:** the workflow runs daily at ~6 PM CET (17:00 UTC) and can also be
+triggered manually from the **Actions** tab ("Publish Macro Report" → Run
+workflow), with a `daily`/`weekly` report-type selector.
+
+**Site URL:** `https://bengui.github.io/macro-reporter/`
+
+The same page is updated on every workflow run, so the published report always
+reflects the latest run.
+
+### One-time setup
+
+GitHub Pages must be enabled once (the workflow cannot do this automatically):
+
+1. In the repo, go to **Settings → Pages**.
+2. Under **Build and deployment → Source**, select **GitHub Actions**.
+
+### API keys (repository secrets)
+
+The fetch scripts read keys from `api_keys/*.txt` (gitignored). The workflow
+materializes these files from repository **secrets**. Add any of the following
+secrets under **Settings → Secrets and variables → Actions** as needed:
+
+| Secret            | Used for                       |
+|-------------------|--------------------------------|
+| `FRED_API_KEY`    | FRED macroeconomic data        |
+| `FMP_API_KEY`     | Financial Modeling Prep data   |
+| `GDELT_API_KEY`   | GDELT geopolitical data        |
+
+Keys that are not set are skipped, and the report still generates with the
+available sources.
+
+### Local publishing
+
+To generate the report and copy it to `docs/index.html` (for local preview):
+
+```bash
+python scripts/generate_report.py --type daily --output html --publish
+```
+
+Or through the main entry point:
+
+```bash
+python scripts/main.py --publish
+```
+
 ## Output
 
 Reports are generated in the `reports/` directory:

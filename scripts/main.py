@@ -56,17 +56,20 @@ def run_fetch_custom() -> bool:
         return False
 
 
-def run_generate_report(report_type: str = "daily", output_format: str = "both") -> bool:
+def run_generate_report(report_type: str = "daily", output_format: str = "both", publish: bool = False) -> bool:
     """Run generate_report.py script."""
     logger.info(f"Running generate_report.py (type={report_type}, format={output_format})...")
     try:
+        cmd = [
+            sys.executable,
+            "scripts/generate_report.py",
+            "--type", report_type,
+            "--output", output_format,
+        ]
+        if publish:
+            cmd.append("--publish")
         result = subprocess.run(
-            [
-                sys.executable,
-                "scripts/generate_report.py",
-                "--type", report_type,
-                "--output", output_format,
-            ],
+            cmd,
             capture_output=True,
             text=True,
         )
@@ -119,7 +122,12 @@ def main() -> None:
         action="store_true",
         help="Fetch all data (OpenBB + Custom) and generate report",
     )
-    
+    parser.add_argument(
+        "--publish",
+        action="store_true",
+        help="Publish the HTML report to the GitHub Pages site root (docs/index.html)",
+    )
+
     args = parser.parse_args()
     
     logger.info("=" * 60)
@@ -129,7 +137,7 @@ def main() -> None:
     # Determine what to run
     if args.generate_only:
         # Only generate report
-        success = run_generate_report(args.type, args.output)
+        success = run_generate_report(args.type, args.output, publish=args.publish)
         sys.exit(0 if success else 1)
     
     if args.fetch_only:
@@ -143,14 +151,14 @@ def main() -> None:
         # Fetch all and generate
         success = run_fetch_openbb()
         success = run_fetch_custom() and success
-        success = run_generate_report(args.type, args.output) and success
+        success = run_generate_report(args.type, args.output, publish=args.publish) and success
         sys.exit(0 if success else 1)
     
     # Default: fetch all data (OpenBB + Custom) and generate report
     success = run_fetch_openbb()
     success = run_fetch_custom() and success
     if success:
-        success = run_generate_report(args.type, args.output)
+        success = run_generate_report(args.type, args.output, publish=args.publish)
     
     sys.exit(0 if success else 1)
 
