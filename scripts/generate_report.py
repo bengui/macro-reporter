@@ -1450,13 +1450,48 @@ def create_html_report(
         
         a { color: #83a598; text-decoration: none; }
         a:hover { text-decoration: underline; }
+
+        /* ----- Mobile / responsive ----- */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+                padding-top: max(12px, env(safe-area-inset-top));
+                font-size: 13px;
+            }
+            h1 { font-size: 1.5em; padding-bottom: 8px; }
+            h2 { font-size: 1.2em; margin-top: 24px; }
+            h3 { font-size: 1.05em; }
+
+            /* Tables become horizontally scrollable so wide dashboards stay
+               readable instead of overflowing the viewport. */
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+                table-layout: auto;
+            }
+            th, td {
+                padding: 8px 10px;
+            }
+
+            /* Tooltips rely on hover and are unreliable on touch. Hide them on
+               mobile; the underlying data is still visible in the table cells. */
+            .tooltiptext { display: none !important; }
+
+            .exec-summary, .viz-container, .legend-box {
+                padding: 12px;
+            }
+        }
     </style>
     """
     
     # Full HTML report
     html = f"""<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Macro Economic Financial Report - {report_date}</title>
     {css}
 </head>
