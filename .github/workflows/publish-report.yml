@@ -78,6 +78,13 @@ jobs:
         env:
           REPORT_TYPE: ${{ github.event.inputs.report_type || 'daily' }}
 
+      - name: Stage report as index.html
+        # GitHub Pages serves index.html at the site root; the report is
+        # generated as reports/<type>_report.html, so copy it to index.html.
+        run: cp "reports/${REPORT_TYPE}_report.html" reports/index.html
+        env:
+          REPORT_TYPE: ${{ github.event.inputs.report_type || 'daily' }}
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
