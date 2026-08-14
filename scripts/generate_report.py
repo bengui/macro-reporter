@@ -7,6 +7,8 @@ with executive summary, market snapshot, macroeconomic dashboard, and visualizat
 """
 
 import argparse
+import base64
+import shutil
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -39,6 +41,23 @@ logger = setup_logging("generate_report")
 # Configuration
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Directory published to GitHub Pages (the site root).
+PAGES_DIR = Path(__file__).parent.parent / "docs"
+
+
+def image_to_data_uri(image_path: str | Path) -> str:
+    """Embed an image as a base64 data URI.
+
+    Embedding charts inline keeps the HTML report self-contained, so it renders
+    correctly when published to GitHub Pages without serving the PNG files.
+    """
+    path = Path(image_path)
+    if not path.exists():
+        return ""
+    mime = "image/png" if path.suffix.lower() == ".png" else "image/png"
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime};base64,{encoded}"
 
 # Traffic light thresholds
 THRESHOLDS: dict[str, dict[str, int | float]] = {
@@ -1265,7 +1284,7 @@ def create_html_report(
         viz_html += f"""
         <div style="margin: 40px 0;">
             <h3>{viz['title']}</h3>
-            <img src="{viz['path']}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 5px;">
+            <img src="{image_to_data_uri(viz['path'])}" style="max-width: 100%; height: auto; border: 1px solid #ddd; border-radius: 5px;" alt="{viz['title']}">
         </div>
         """
     
@@ -1496,8 +1515,26 @@ def save_pdf_report(html: str, report_type: str = "daily") -> Path | None:
         logger.error(f"Error generating PDF: {e}")
         return None
 
+def publish_report(report_type: str = "daily") -> Path | None:
+    """Publish the generated HTML report to the GitHub Pages site root.
 
-def generate_report(report_type: str = "daily", output_format: str = "both") -> None:
+    Copies ``reports/{report_type}_report.html`` to ``docs/index.html`` so it
+    is served as the GitHub Pages landing page and refreshed whenever the
+    report is regenerated.
+    """
+    source = REPORTS_DIR / f"{report_type}_report.html"
+    if not source.exists():
+        logger.error(f"Cannot publish: source report not found: {source}")
+        return None
+
+    PAGES_DIR.mkdir(parents=True, exist_ok=True)
+    destination = PAGES_DIR / "index.html"
+    shutil.copy2(source, destination)
+    logger.info(f"  Published report to GitHub Pages site root: {destination}")
+    return destination
+
+
+def generate_report(report_type: str = "daily", output_format: str = "both", publish: bool = False) -> None:
     """Generate financial report."""
     logger.info("=" * 60)
     logger.info(f"Generating {report_type} report")
@@ -1527,6 +1564,9 @@ def generate_report(report_type: str = "daily", output_format: str = "both") -> 
         if pdf_path:
             logger.info(f"  Saved PDF report: {pdf_path}")
     
+    if publish:
+        publish_report(report_type)
+
     logger.info("=" * 60)
     logger.info("Report generation completed")
     logger.info("=" * 60)
@@ -1548,6 +1588,11 @@ if __name__ == "__main__":
         choices=["html", "pdf", "both"],
         help="Output format (default: both)",
     )
+    parser.add_argument(
+        "--publish",
+        action="store_true",
+        help="Publish the HTML report to the GitHub Pages site root (docs/index.html)",
+    )
     args = parser.parse_args()
-    
-    generate_report(args.type, args.output)
+
+    generate_report(args.type, args.output, publish=args.publish)
