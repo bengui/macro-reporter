@@ -1,11 +1,11 @@
 name: Publish Macro Report
 
 on:
-  # Daily at 18:00 CET. CET is UTC+1 (UTC+2 during CEST). GitHub Actions
-  # cron runs in UTC, so 17:00 UTC == 18:00 CET / 19:00 CEST. This keeps the
-  # run close to 6 PM local time year-round.
+  # Daily at 07:00 CET. CET is UTC+1 (UTC+2 during CEST). GitHub Actions
+  # cron runs in UTC, so 06:00 UTC == 07:00 CET / 08:00 CEST. This keeps the
+  # run at 7 AM local time during winter (CET) and 8 AM during summer (CEST).
   schedule:
-    - cron: "0 17 * * *"
+    - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
       report_type:

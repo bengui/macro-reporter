@@ -10,7 +10,7 @@ import argparse
 import base64
 import shutil
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -973,7 +973,9 @@ def create_html_report(
     report_type: str = "daily",
 ) -> str:
     """Create HTML report content."""
-    report_date = format_date(datetime.now(), "%Y-%m-%d %H:%M:%S")
+    report_date = format_date(
+        datetime.now(timezone.utc), "%Y-%m-%d %H:%M:%S UTC"
+    )
     
     # Traffic light signals
     signals = {
