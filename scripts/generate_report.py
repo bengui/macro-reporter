@@ -34,9 +34,46 @@ from scripts.utils.formatting import (
     get_traffic_light_signal,
     get_traffic_light_signal_higher_better,
 )
-from scripts.utils.logging import setup_logging
+from scripts.utils.logging import setup_logging, log_data_issue, log_missing_data, log_invalid_data, log_data_loaded
 
 logger = setup_logging("generate_report")
+
+
+def validate_dataframe(df: pd.DataFrame, data_source: str, expected_columns: list = None) -> bool:
+    """
+    Validate a DataFrame and log any issues.
+    
+    Args:
+        df: DataFrame to validate
+        data_source: Name of the data source for logging
+        expected_columns: List of expected column names
+    
+    Returns:
+        True if data is valid, False otherwise
+    """
+    if df is None:
+        log_missing_data(logger, data_source, "DataFrame is None")
+        return False
+    
+    if df.empty:
+        log_data_issue(logger, data_source, "empty_data", "DataFrame has no rows")
+        return False
+    
+    if expected_columns:
+        missing_cols = [col for col in expected_columns if col not in df.columns]
+        if missing_cols:
+            log_data_issue(logger, data_source, "missing_column", f"Missing columns: {', '.join(missing_cols)}")
+            return False
+    
+    # Check for NaN values in the data
+    nan_count = df.isna().sum().sum()
+    if nan_count > 0:
+        log_data_issue(logger, data_source, "nan_value", f"Found {nan_count} NaN values")
+        # Still return True as we might be able to work with partial data
+    
+    log_data_loaded(logger, data_source, len(df), list(df.columns))
+    return True
+
 
 # Configuration
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
@@ -78,9 +115,11 @@ THRESHOLDS: dict[str, dict[str, int | float]] = {
 }
 
 
-def get_latest_value(df: pd.DataFrame, column: str = "close") -> float:
+def get_latest_value(df: pd.DataFrame, column: str = "close", data_source: str = None) -> float:
     """Get the latest value from a DataFrame."""
     if df.empty:
+        if data_source:
+            log_data_issue(logger, data_source, "empty_data", "Cannot get latest value from empty DataFrame")
         return 0.0
     # Sort by date if it exists
     if "date" in df.columns:
@@ -89,24 +128,48 @@ def get_latest_value(df: pd.DataFrame, column: str = "close") -> float:
         df = df.sort_values("DATE")
     
     if column in df.columns:
-        return float(df[column].iloc[-1])
+        try:
+            value = float(df[column].iloc[-1])
+            if data_source:
+                log_data_loaded(logger, data_source, 1, [column])
+            return value
+        except (ValueError, TypeError) as e:
+            if data_source:
+                log_invalid_data(logger, data_source, f"Cannot convert {column} to float", df[column].iloc[-1])
+            return 0.0
     # For CPI-like data, value might be in a 'value' column
     if "value" in df.columns:
-        return float(df["value"].iloc[-1])
+        try:
+            value = float(df["value"].iloc[-1])
+            if data_source:
+                log_data_loaded(logger, data_source, 1, ["value"])
+            return value
+        except (ValueError, TypeError) as e:
+            if data_source:
+                log_invalid_data(logger, data_source, f"Cannot convert value column to float", df["value"].iloc[-1])
+            return 0.0
     # Try common value column names
     for col in ["close", "GDP", "GDPC1", "value", "rate"]:
         if col in df.columns:
             try:
-                return float(df[col].iloc[-1])
+                value = float(df[col].iloc[-1])
+                if data_source:
+                    log_data_loaded(logger, data_source, 1, [col])
+                return value
             except (ValueError, TypeError):
                 continue
     # Fallback to last numeric column
     for col in reversed(df.columns):
         if col.lower() not in ("date", "DATE", "symbol", "time"):
             try:
-                return float(df[col].iloc[-1])
+                value = float(df[col].iloc[-1])
+                if data_source:
+                    log_data_loaded(logger, data_source, 1, [col])
+                return value
             except (ValueError, TypeError):
                 continue
+    if data_source:
+        log_data_issue(logger, data_source, "missing_column", "No valid numeric column found")
     return 0.0
 
 
@@ -266,13 +329,17 @@ def create_market_snapshot() -> dict:
     for name in indices:
         try:
             df = load_from_csv(name)
+            validate_dataframe(df, name, ["date", "close"])
             snapshot[name] = {
-                "value": get_latest_value(df, "close"),
+                "value": get_latest_value(df, "close", name),
                 "change_1m": calculate_change(df, "close", 30),
                 "change_1y": calculate_change(df, "close", 365),
             }
+        except FileNotFoundError as e:
+            log_missing_data(logger, name, f"File not found: {e}")
+            snapshot[name] = {"value": 0, "change_1m": 0, "change_1y": 0}
         except Exception as e:
-            logger.warning(f"Error loading {name.replace('_', ' ').title()}: {e}")
+            log_data_issue(logger, name, "load_error", str(e))
             snapshot[name] = {"value": 0, "change_1m": 0, "change_1y": 0}
     
     # Commodities
@@ -280,13 +347,17 @@ def create_market_snapshot() -> dict:
     for name in commodities:
         try:
             df = load_from_csv(name)
+            validate_dataframe(df, name, ["date", "close"])
             snapshot[name] = {
-                "value": get_latest_value(df, "close"),
+                "value": get_latest_value(df, "close", name),
                 "change_1m": calculate_change(df, "close", 30),
                 "change_1y": calculate_change(df, "close", 365),
             }
+        except FileNotFoundError as e:
+            log_missing_data(logger, name, f"File not found: {e}")
+            snapshot[name] = {"value": 0, "change_1m": 0, "change_1y": 0}
         except Exception as e:
-            logger.warning(f"Error loading {name.replace('_', ' ').title()}: {e}")
+            log_data_issue(logger, name, "load_error", str(e))
             snapshot[name] = {"value": 0, "change_1m": 0, "change_1y": 0}
     
     # Forex
@@ -294,13 +365,17 @@ def create_market_snapshot() -> dict:
     for name in forex:
         try:
             df = load_from_csv(name)
+            validate_dataframe(df, name, ["date", "close"])
             snapshot[name] = {
-                "value": get_latest_value(df, "close"),
+                "value": get_latest_value(df, "close", name),
                 "change_1m": calculate_change(df, "close", 30),
                 "change_1y": calculate_change(df, "close", 365),
             }
+        except FileNotFoundError as e:
+            log_missing_data(logger, name, f"File not found: {e}")
+            snapshot[name] = {"value": 0, "change_1m": 0, "change_1y": 0}
         except Exception as e:
-            logger.warning(f"Error loading {name.upper()}: {e}")
+            log_data_issue(logger, name, "load_error", str(e))
             snapshot[name] = {"value": 0, "change_1m": 0, "change_1y": 0}
     
     return snapshot
@@ -314,7 +389,8 @@ def create_macro_dashboard() -> dict:
     # Note: CPI data comes as decimals (0.04 = 4%), convert to percentages
     try:
         cpi = load_from_csv("us_cpi")
-        latest = get_latest_value(cpi) * 100
+        validate_dataframe(cpi, "us_cpi")
+        latest = get_latest_value(cpi, "value", "us_cpi") * 100
         # For monthly data, previous = prior month (1 position back)
         previous = get_previous_value(cpi, days=1) * 100 if len(cpi) >= 2 else 0
         change = calculate_change(cpi, days=1) if len(cpi) >= 2 else 0
@@ -325,8 +401,11 @@ def create_macro_dashboard() -> dict:
             "change_1m": change,
             "change_1y": change_1y,
         }
+    except FileNotFoundError as e:
+        log_missing_data(logger, "us_cpi", f"File not found: {e}")
+        dashboard["us_cpi"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
-        logger.warning(f"Error loading US CPI: {e}")
+        log_data_issue(logger, "us_cpi", "load_error", str(e))
         dashboard["us_cpi"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # Unemployment - Monthly data, use immediate previous month
@@ -477,7 +556,12 @@ def create_macro_dashboard() -> dict:
     # ECB Yield Curve (from custom data)
     try:
         yield_curve = load_from_json("ecb_yield_curve", CUSTOM_DATA_DIR)
-        if "yields" in yield_curve and isinstance(yield_curve["yields"], dict):
+        if "yields" not in yield_curve:
+            log_data_issue(logger, "ecb_yield_curve", "missing_column", "No 'yields' key found in JSON")
+        elif not isinstance(yield_curve["yields"], dict):
+            log_data_issue(logger, "ecb_yield_curve", "invalid_value", "'yields' is not a dictionary")
+        else:
+            log_data_loaded(logger, "ecb_yield_curve", len(yield_curve["yields"]), list(yield_curve["yields"].keys()))
             history = yield_curve.get("history", {})
             for maturity, value in yield_curve["yields"].items():
                 prev_val = 0
@@ -503,8 +587,10 @@ def create_macro_dashboard() -> dict:
                     "change_1m": change_1m,
                     "change_1y": change_1y,
                 }
+    except FileNotFoundError as e:
+        log_missing_data(logger, "ecb_yield_curve", f"File not found: {e}")
     except Exception as e:
-        logger.warning(f"Error loading ECB yield curve: {e}")
+        log_data_issue(logger, "ecb_yield_curve", "load_error", str(e))
     
     # ECB Reference Rates (from custom data) - Note: ESTR is loaded but not added to dashboard
     # as it's only used for the Euribor 12M - €STR spread calculation
@@ -544,6 +630,7 @@ def create_macro_dashboard() -> dict:
     # Treasury rates
     try:
         treasury = load_from_csv("us_treasury_rates")
+        validate_dataframe(treasury, "us_treasury_rates")
         # Get 10Y rate - column might be year_10 or 10Y
         treasury_col = None
         for col in ["year_10", "10Y", "10year", "year10"]:
@@ -554,7 +641,7 @@ def create_macro_dashboard() -> dict:
         if treasury_col:
             # Treasury rates are returned as decimals (e.g., 0.0445 = 4.45%)
             # Convert to percentage for display
-            latest = get_latest_value(treasury, treasury_col) * 100
+            latest = get_latest_value(treasury, treasury_col, "us_treasury_rates") * 100
             previous = get_previous_value(treasury, treasury_col, 30) * 100
             change = calculate_change(treasury, treasury_col, 30)
             change_1y = calculate_change(treasury, treasury_col, 365)
@@ -568,7 +655,7 @@ def create_macro_dashboard() -> dict:
             # Try to find any column with '10' in it
             for col in treasury.columns:
                 if "10" in str(col).lower():
-                    latest = get_latest_value(treasury, col) * 100
+                    latest = get_latest_value(treasury, col, "us_treasury_rates") * 100
                     previous = get_previous_value(treasury, col, 30) * 100
                     change = calculate_change(treasury, col, 30)
                     change_1y = calculate_change(treasury, col, 365)
@@ -578,11 +665,16 @@ def create_macro_dashboard() -> dict:
                         "change_1m": change,
                         "change_1y": change_1y,
                     }
+                    log_data_loaded(logger, "us_treasury_rates", len(treasury), [col])
                     break
             else:
+                log_data_issue(logger, "us_treasury_rates", "missing_column", "No 10Y column found")
                 dashboard["treasury_10y"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
+    except FileNotFoundError as e:
+        log_missing_data(logger, "us_treasury_rates", f"File not found: {e}")
+        dashboard["treasury_10y"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
-        logger.warning(f"Error loading Treasury rates: {e}")
+        log_data_issue(logger, "us_treasury_rates", "load_error", str(e))
         dashboard["treasury_10y"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # Euribor 12M - ECB €STR spread (from custom data)
@@ -767,11 +859,16 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     # Create sp500 trend chart (365 days)
     try:
         sp500 = load_from_csv("sp500")
+        validate_dataframe(sp500, "sp500", ["date", "close"])
         # Convert date strings to datetime for proper plotting
         sp500["date"] = pd.to_datetime(sp500["date"])
         # Filter to last 365 days
         cutoff = datetime.now() - timedelta(days=365)
         sp500 = sp500[sp500["date"] >= cutoff]
+        
+        if sp500.empty:
+            log_data_issue(logger, "sp500", "empty_data", "No data after filtering to 365 days")
+            raise ValueError("No data after filtering")
         
         fig, ax = plt.subplots(figsize=(10, 4))
         
@@ -800,8 +897,10 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
         plt.close(fig)
         visualizations.append({"title": "S&P 500 Trend", "path": str(img_path)})
         logger.info("  Created S&P 500 trend chart")
+    except FileNotFoundError as e:
+        log_missing_data(logger, "sp500", f"File not found for chart: {e}")
     except Exception as e:
-        logger.error(f"  Error creating S&P 500 chart: {e}")
+        log_data_issue(logger, "sp500", "chart_error", f"Error creating S&P 500 chart: {e}")
     
     # Create STOXX 600 trend chart (365 days)
     try:
@@ -1604,6 +1703,31 @@ def generate_report(report_type: str = "daily", output_format: str = "both", pub
     if publish:
         publish_report(report_type)
 
+    # Log summary of data quality
+    logger.info("=" * 60)
+    logger.info("Data Quality Summary")
+    logger.info("=" * 60)
+    
+    # Check market snapshot for zeros (indicating missing data)
+    missing_market = [k for k, v in snapshot.items() if v["value"] == 0]
+    if missing_market:
+        logger.warning(f"Market data missing for: {', '.join(missing_market)}")
+    else:
+        logger.info("All market data present")
+    
+    # Check macro dashboard for zeros (indicating missing data)
+    missing_macro = [k for k, v in dashboard.items() if v.get("value", 0) == 0]
+    if missing_macro:
+        logger.warning(f"Macro data missing for: {', '.join(missing_macro)}")
+    else:
+        logger.info("All macro data present")
+    
+    # Check visualizations
+    if len(visualizations) == 0:
+        logger.warning("No visualizations were created")
+    else:
+        logger.info(f"Created {len(visualizations)} visualizations")
+    
     logger.info("=" * 60)
     logger.info("Report generation completed")
     logger.info("=" * 60)

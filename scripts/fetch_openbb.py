@@ -24,7 +24,7 @@ from scripts.utils.caching import (
     save_to_csv,
     OPENBB_DATA_DIR,
 )
-from scripts.utils.logging import setup_logging
+from scripts.utils.logging import setup_logging, log_data_issue, log_missing_data, log_invalid_data, log_data_loaded
 
 FRED_KEY = get_api_key("FRED")
 if FRED_KEY:
@@ -127,14 +127,14 @@ def fetch_market_indices() -> None:
                 start_date=START_DATE,
             ).to_df()
             if data.empty:
-                logger.warning(f"  No data returned for {name}")
+                log_data_issue(logger, name, "empty_data", f"No data returned from OpenBB for {symbol}")
                 continue
             # Reset index to include date as a column
             data = data.reset_index()
             save_to_csv(data, name, OPENBB_DATA_DIR)
-            logger.info(f"  Saved {name} data ({len(data)} rows)")
+            log_data_loaded(logger, name, len(data), list(data.columns))
         except Exception as e:
-            logger.error(f"  Error fetching {name}: {e}")
+            log_data_issue(logger, name, "fetch_error", f"Error fetching from OpenBB: {e}")
 
 
 def fetch_commodities() -> None:
@@ -148,14 +148,14 @@ def fetch_commodities() -> None:
                 start_date=START_DATE,
             ).to_df()
             if data.empty:
-                logger.warning(f"  No data returned for {name}")
+                log_data_issue(logger, name, "empty_data", f"No data returned from OpenBB for {symbol}")
                 continue
             # Reset index to include date as a column
             data = data.reset_index()
             save_to_csv(data, name, OPENBB_DATA_DIR)
-            logger.info(f"  Saved {name} data ({len(data)} rows)")
+            log_data_loaded(logger, name, len(data), list(data.columns))
         except Exception as e:
-            logger.error(f"  Error fetching {name}: {e}")
+            log_data_issue(logger, name, "fetch_error", f"Error fetching from OpenBB: {e}")
 
 
 def fetch_forex() -> None:
