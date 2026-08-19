@@ -83,6 +83,30 @@ def run_generate_report(report_type: str = "daily", output_format: str = "both",
         return False
 
 
+def run_fetch_and_store_test_data(commit: bool = False, test_data_dir: str = None) -> bool:
+    """Run fetch_and_store_test_data.py script."""
+    logger.info("Running fetch_and_store_test_data.py...")
+    try:
+        cmd = [sys.executable, "scripts/fetch_and_store_test_data.py"]
+        if commit:
+            cmd.append("--commit")
+        if test_data_dir:
+            cmd.extend(["--test-data-dir", test_data_dir])
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            logger.error(f"fetch_and_store_test_data.py failed:\n{result.stderr}")
+            return False
+        logger.info("fetch_and_store_test_data.py completed successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Error running fetch_and_store_test_data.py: {e}")
+        return False
+
+
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -127,6 +151,16 @@ def main() -> None:
         action="store_true",
         help="Publish the HTML report to the GitHub Pages site root (docs/index.html)",
     )
+    parser.add_argument(
+        "--fetch-test-data",
+        action="store_true",
+        help="Fetch all data and store in test folder for offline testing",
+    )
+    parser.add_argument(
+        "--commit-test-data",
+        action="store_true",
+        help="Commit the test data to git (use with --fetch-test-data)",
+    )
 
     args = parser.parse_args()
     
@@ -152,6 +186,14 @@ def main() -> None:
         success = run_fetch_openbb()
         success = run_fetch_custom() and success
         success = run_generate_report(args.type, args.output, publish=args.publish) and success
+        sys.exit(0 if success else 1)
+    
+    # Handle test data fetching
+    if args.fetch_test_data:
+        success = run_fetch_and_store_test_data(
+            commit=args.commit_test_data,
+            test_data_dir=None
+        )
         sys.exit(0 if success else 1)
     
     # Default: fetch all data (OpenBB + Custom) and generate report
