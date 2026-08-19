@@ -412,7 +412,8 @@ def create_macro_dashboard() -> dict:
     # Note: Unemployment data comes as decimals (0.04 = 4%), convert to percentages
     try:
         unemployment = load_from_csv("us_unemployment")
-        latest = get_latest_value(unemployment) * 100
+        validate_dataframe(unemployment, "us_unemployment")
+        latest = get_latest_value(unemployment, "value", "us_unemployment") * 100
         # For monthly data, previous = prior month (1 position back)
         previous = get_previous_value(unemployment, days=1) * 100 if len(unemployment) >= 2 else 0
         change = calculate_change(unemployment, days=1) if len(unemployment) >= 2 else 0
@@ -423,14 +424,18 @@ def create_macro_dashboard() -> dict:
             "change_1m": change,
             "change_1y": change_1y,
         }
+    except FileNotFoundError as e:
+        log_missing_data(logger, "us_unemployment", f"File not found: {e}")
+        dashboard["us_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
-        logger.warning(f"Error loading US Unemployment: {e}")
+        log_data_issue(logger, "us_unemployment", "load_error", str(e))
         dashboard["us_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # EU CPI - Monthly data
     try:
         eu_cpi = load_from_csv("eu_cpi")
-        latest = get_latest_value(eu_cpi) * 100
+        validate_dataframe(eu_cpi, "eu_cpi")
+        latest = get_latest_value(eu_cpi, "value", "eu_cpi") * 100
         previous = get_previous_value(eu_cpi, days=1) * 100 if len(eu_cpi) >= 2 else 0
         change = calculate_change(eu_cpi, days=1) if len(eu_cpi) >= 2 else 0
         change_1y = calculate_change(eu_cpi, days=365) if len(eu_cpi) >= 2 else 0
@@ -440,14 +445,18 @@ def create_macro_dashboard() -> dict:
             "change_1m": change,
             "change_1y": change_1y,
         }
+    except FileNotFoundError as e:
+        log_missing_data(logger, "eu_cpi", f"File not found: {e}")
+        dashboard["eu_cpi"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
-        logger.warning(f"Error loading EU CPI: {e}")
+        log_data_issue(logger, "eu_cpi", "load_error", str(e))
         dashboard["eu_cpi"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # EU Unemployment - Monthly data
     try:
         eu_unemployment = load_from_csv("eu_unemployment")
-        latest = get_latest_value(eu_unemployment) * 100
+        validate_dataframe(eu_unemployment, "eu_unemployment")
+        latest = get_latest_value(eu_unemployment, "value", "eu_unemployment") * 100
         previous = get_previous_value(eu_unemployment, days=1) * 100 if len(eu_unemployment) >= 2 else 0
         change = calculate_change(eu_unemployment, days=1) if len(eu_unemployment) >= 2 else 0
         change_1y = calculate_change(eu_unemployment, days=365) if len(eu_unemployment) >= 2 else 0
@@ -457,14 +466,18 @@ def create_macro_dashboard() -> dict:
             "change_1m": change,
             "change_1y": change_1y,
         }
+    except FileNotFoundError as e:
+        log_missing_data(logger, "eu_unemployment", f"File not found: {e}")
+        dashboard["eu_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
-        logger.warning(f"Error loading EU Unemployment: {e}")
+        log_data_issue(logger, "eu_unemployment", "load_error", str(e))
         dashboard["eu_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # Spain CPI - Monthly data
     try:
         spain_cpi = load_from_csv("spain_cpi")
-        latest = get_latest_value(spain_cpi) * 100
+        validate_dataframe(spain_cpi, "spain_cpi")
+        latest = get_latest_value(spain_cpi, "value", "spain_cpi") * 100
         previous = get_previous_value(spain_cpi, days=1) * 100 if len(spain_cpi) >= 2 else 0
         change = calculate_change(spain_cpi, days=1) if len(spain_cpi) >= 2 else 0
         change_1y = calculate_change(spain_cpi, days=365) if len(spain_cpi) >= 2 else 0
@@ -474,14 +487,18 @@ def create_macro_dashboard() -> dict:
             "change_1m": change,
             "change_1y": change_1y,
         }
+    except FileNotFoundError as e:
+        log_missing_data(logger, "spain_cpi", f"File not found: {e}")
+        dashboard["spain_cpi"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
-        logger.warning(f"Error loading Spain CPI: {e}")
+        log_data_issue(logger, "spain_cpi", "load_error", str(e))
         dashboard["spain_cpi"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # Spain Unemployment - Monthly data
     try:
         spain_unemployment = load_from_csv("spain_unemployment")
-        latest = get_latest_value(spain_unemployment) * 100
+        validate_dataframe(spain_unemployment, "spain_unemployment")
+        latest = get_latest_value(spain_unemployment, "value", "spain_unemployment") * 100
         previous = get_previous_value(spain_unemployment, days=1) * 100 if len(spain_unemployment) >= 2 else 0
         change = calculate_change(spain_unemployment, days=1) if len(spain_unemployment) >= 2 else 0
         change_1y = calculate_change(spain_unemployment, days=365) if len(spain_unemployment) >= 2 else 0
@@ -491,14 +508,18 @@ def create_macro_dashboard() -> dict:
             "change_1m": change,
             "change_1y": change_1y,
         }
+    except FileNotFoundError as e:
+        log_missing_data(logger, "spain_unemployment", f"File not found: {e}")
+        dashboard["spain_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
-        logger.warning(f"Error loading Spain Unemployment: {e}")
+        log_data_issue(logger, "spain_unemployment", "load_error", str(e))
         dashboard["spain_unemployment"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # GDP (nominal) - Quarterly data, use immediate previous quarter
     try:
         gdp = load_from_csv("us_gdp")
-        latest = get_latest_value(gdp)
+        validate_dataframe(gdp, "us_gdp")
+        latest = get_latest_value(gdp, "GDP", "us_gdp")
         # For quarterly data, previous = prior quarter (1 position back)
         previous = get_previous_value(gdp, days=1) if len(gdp) >= 2 else 0
         change = calculate_change(gdp, days=1) if len(gdp) >= 2 else 0
@@ -509,14 +530,18 @@ def create_macro_dashboard() -> dict:
             "change_1m": change,
             "change_1y": change_1y,
         }
+    except FileNotFoundError as e:
+        log_missing_data(logger, "us_gdp", f"File not found: {e}")
+        dashboard["us_gdp"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
-        logger.warning(f"Error loading US GDP: {e}")
+        log_data_issue(logger, "us_gdp", "load_error", str(e))
         dashboard["us_gdp"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # GDP Real - Quarterly data, use immediate previous quarter
     try:
         gdp_real = load_from_csv("us_gdp_real")
-        latest = get_latest_value(gdp_real)
+        validate_dataframe(gdp_real, "us_gdp_real")
+        latest = get_latest_value(gdp_real, "GDP", "us_gdp_real")
         # For quarterly data, previous = prior quarter (1 position back)
         previous = get_previous_value(gdp_real, days=1) if len(gdp_real) >= 2 else 0
         change = calculate_change(gdp_real, days=1) if len(gdp_real) >= 2 else 0
@@ -527,8 +552,11 @@ def create_macro_dashboard() -> dict:
             "change_1m": change,
             "change_1y": change_1y,
         }
+    except FileNotFoundError as e:
+        log_missing_data(logger, "us_gdp_real", f"File not found: {e}")
+        dashboard["us_gdp_real"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
-        logger.warning(f"Error loading US GDP Real: {e}")
+        log_data_issue(logger, "us_gdp_real", "load_error", str(e))
         dashboard["us_gdp_real"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # GDP YoY (Year-over-Year growth rate) - from country_profile
@@ -536,9 +564,10 @@ def create_macro_dashboard() -> dict:
     for name in gdp_yoy_countries:
         try:
             gdp_data = load_from_csv(name)
+            validate_dataframe(gdp_data, name)
             if not gdp_data.empty:
                 # The CSV has a gdp_yoy column with the value
-                latest = get_latest_value(gdp_data, "gdp_yoy") * 100  # Convert to percentage
+                latest = get_latest_value(gdp_data, "gdp_yoy", name) * 100  # Convert to percentage
                 # For YoY data, we don't have history in the current format
                 change_1y = calculate_change(gdp_data, "gdp_yoy", days=365) if len(gdp_data) >= 2 else 0
                 dashboard[name] = {
@@ -548,9 +577,13 @@ def create_macro_dashboard() -> dict:
                     "change_1y": change_1y,
                 }
             else:
+                log_data_issue(logger, name, "empty_data", "DataFrame is empty")
                 dashboard[name] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
+        except FileNotFoundError as e:
+            log_missing_data(logger, name, f"File not found: {e}")
+            dashboard[name] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
         except Exception as e:
-            logger.warning(f"Error loading {name}: {e}")
+            log_data_issue(logger, name, "load_error", str(e))
             dashboard[name] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # ECB Yield Curve (from custom data)
@@ -596,7 +629,12 @@ def create_macro_dashboard() -> dict:
     # as it's only used for the Euribor 12M - €STR spread calculation
     try:
         ref_rates = load_from_json("ecb_reference_rates", CUSTOM_DATA_DIR)
-        if "rates" in ref_rates and isinstance(ref_rates["rates"], dict):
+        if "rates" not in ref_rates:
+            log_data_issue(logger, "ecb_reference_rates", "missing_column", "No 'rates' key found in JSON")
+        elif not isinstance(ref_rates["rates"], dict):
+            log_data_issue(logger, "ecb_reference_rates", "invalid_value", "'rates' is not a dictionary")
+        else:
+            log_data_loaded(logger, "ecb_reference_rates", len(ref_rates["rates"]), list(ref_rates["rates"].keys()))
             history = ref_rates.get("history", {})
             for name, value in ref_rates["rates"].items():
                 # Skip ESTR - it's only used for spread calculation, not displayed separately
@@ -624,8 +662,10 @@ def create_macro_dashboard() -> dict:
                     "change_1m": change_1m,
                     "change_1y": change_1y,
                 }
+    except FileNotFoundError as e:
+        log_missing_data(logger, "ecb_reference_rates", f"File not found: {e}")
     except Exception as e:
-        logger.warning(f"Error loading ECB reference rates: {e}")
+        log_data_issue(logger, "ecb_reference_rates", "load_error", str(e))
     
     # Treasury rates
     try:
@@ -800,16 +840,24 @@ def create_macro_dashboard() -> dict:
                 "change_1y": change_1y,
             }
         else:
+            log_data_issue(logger, "euribor_12m_estr_spread", "missing_column", "No spread data available")
             dashboard["euribor_12m_estr_spread"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
+    except FileNotFoundError as e:
+        log_missing_data(logger, "euribor or ecb_reference_rates", f"File not found: {e}")
+        dashboard["euribor_12m_estr_spread"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
-        logger.warning(f"Error loading Euribor spread: {e}")
+        log_data_issue(logger, "euribor_12m_estr_spread", "load_error", str(e))
         dashboard["euribor_12m_estr_spread"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     # Spanish-German 10Y bond spread (from custom data)
     try:
         bond_spreads = load_from_json("bond_spreads", CUSTOM_DATA_DIR)
-        if "spread" in bond_spreads:
+        if "spread" not in bond_spreads:
+            log_data_issue(logger, "bond_spreads", "missing_column", "No 'spread' key found in JSON")
+            dashboard["spain_germany_10y_spread"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
+        else:
             spread = bond_spreads["spread"]
+            log_data_loaded(logger, "bond_spreads", 1, ["spread"])
             history = bond_spreads.get("history", {})
             
             prev_spread = 0
@@ -833,10 +881,11 @@ def create_macro_dashboard() -> dict:
                 "change_1m": change_1m,
                 "change_1y": change_1y,
             }
-        else:
-            dashboard["spain_germany_10y_spread"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
+    except FileNotFoundError as e:
+        log_missing_data(logger, "bond_spreads", f"File not found: {e}")
+        dashboard["spain_germany_10y_spread"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     except Exception as e:
-        logger.warning(f"Error loading bond spreads: {e}")
+        log_data_issue(logger, "bond_spreads", "load_error", str(e))
         dashboard["spain_germany_10y_spread"] = {"value": 0, "previous": 0, "change_1m": 0, "change_1y": 0}
     
     return dashboard
