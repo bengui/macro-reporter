@@ -9,14 +9,16 @@ A Python service that generates daily/weekly macroeconomic financial reports usi
 - **Output**: PDF and HTML reports
 - **Visualizations**: Charts and tables for key metrics
 - **Traffic Light Signals**: Color-coded indicators for risk assessment
+- **Test Data Mode**: Fetch and store real data for offline testing without API access
 
 ## Project Structure
 
 ```
 macro_reporter/
-├── data/
+├── data/                  # Runtime data cache (gitignored)
 │   ├── openbb_data/      # Data from OpenBB
 │   └── custom_data/      # Data from custom APIs
+├── test_data/            # Test data for offline testing (can be committed)
 ├── scripts/
 │   ├── fetch_openbb.py   # Fetch data from OpenBB
 │   ├── fetch_ecb.py       # Fetch ECB data
@@ -25,6 +27,7 @@ macro_reporter/
 │   ├── fetch_ipos.py      # Fetch IPO activity data
 │   ├── fetch_spanish_real_estate.py # Fetch Spanish real estate data
 │   ├── fetch_all.py       # Fetch all custom data sources
+│   ├── fetch_and_store_test_data.py # Fetch and store test data
 │   ├── generate_report.py # Generate the digest report
 │   └── utils/            # Helper functions
 ├── reports/             # Generated reports (PDF/HTML)
