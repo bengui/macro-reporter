@@ -97,6 +97,31 @@ python scripts/generate_report.py --type daily --output pdf
 python scripts/generate_report.py --type weekly --output html
 ```
 
+### Fetch and Store Test Data
+
+For testing the report generation offline (without API access), you can fetch
+real data and store it in a test folder, then commit it to git:
+
+```bash
+# Fetch all data and store in test_data/ folder
+python scripts/fetch_and_store_test_data.py
+
+# Fetch and commit test data in one step
+python scripts/fetch_and_store_test_data.py --commit
+
+# Fetch and store with custom directory
+python scripts/fetch_and_store_test_data.py --test-data-dir ./my_test_data
+
+# Only fetch data (don't store)
+python scripts/fetch_and_store_test_data.py --fetch-only
+
+# Commit previously stored test data
+python scripts/fetch_and_store_test_data.py --commit --test-data-dir ./my_test_data
+```
+
+The test data folder can be committed to git and used in sandbox/local
+environments to test report generation with real data.
+
 ## Configuration
 
 Edit the configuration in each script to customize:
