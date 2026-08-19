@@ -1,0 +1,2 @@
+index,country,population,gdp_usd,gdp_qoq,gdp_yoy,cpi_yoy,core_yoy,retail_sales_yoy,industrial_production_yoy,policy_rate,yield_10y,govt_debt_gdp,current_account_gdp,jobless_rate
+0,United States,342746000,32475.21,0.005183,0.02685,0.03773,0.027549999999999998,0.05006,0.011441,0.0363,0.046,1.2246761760739961,-0.031212,0.043
