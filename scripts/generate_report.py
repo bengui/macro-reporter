@@ -13,28 +13,35 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pandas as pd
 import matplotlib
+import pandas as pd
+
 matplotlib.use("Agg")  # Use non-interactive backend
-import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.utils.caching import (
+    CUSTOM_DATA_DIR,
     load_from_csv,
     load_from_json,
-    CUSTOM_DATA_DIR,
 )
 from scripts.utils.formatting import (
+    format_date,
     format_number,
     format_percentage,
-    format_date,
     get_traffic_light_signal,
     get_traffic_light_signal_higher_better,
 )
-from scripts.utils.logging import setup_logging, log_data_issue, log_missing_data, log_invalid_data, log_data_loaded
+from scripts.utils.logging import (
+    log_data_issue,
+    log_data_loaded,
+    log_invalid_data,
+    log_missing_data,
+    setup_logging,
+)
 
 logger = setup_logging("generate_report")
 
@@ -133,7 +140,7 @@ def get_latest_value(df: pd.DataFrame, column: str = "close", data_source: str =
             if data_source:
                 log_data_loaded(logger, data_source, 1, [column])
             return value
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError):
             if data_source:
                 log_invalid_data(logger, data_source, f"Cannot convert {column} to float", df[column].iloc[-1])
             return 0.0
@@ -144,9 +151,9 @@ def get_latest_value(df: pd.DataFrame, column: str = "close", data_source: str =
             if data_source:
                 log_data_loaded(logger, data_source, 1, ["value"])
             return value
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError):
             if data_source:
-                log_invalid_data(logger, data_source, f"Cannot convert value column to float", df["value"].iloc[-1])
+                log_invalid_data(logger, data_source, "Cannot convert value column to float", df["value"].iloc[-1])
             return 0.0
     # Try common value column names
     for col in ["close", "GDP", "GDPC1", "value", "rate"]:
@@ -1045,7 +1052,7 @@ def create_visualizations(snapshot: dict, dashboard: dict) -> list:
     
     # Create Euribor 12M - €STR Spread chart (90 days)
     try:
-        from scripts.utils.caching import load_from_json, CUSTOM_DATA_DIR
+        from scripts.utils.caching import CUSTOM_DATA_DIR, load_from_json
         
         euribor = load_from_json("euribor", CUSTOM_DATA_DIR)
         ref_rates = load_from_json("ecb_reference_rates", CUSTOM_DATA_DIR)
@@ -1399,7 +1406,7 @@ def create_html_report(
     
     # Load Spanish real estate data
     try:
-        from scripts.utils.caching import load_from_json, CUSTOM_DATA_DIR
+        from scripts.utils.caching import CUSTOM_DATA_DIR, load_from_json
         real_estate_data = load_from_json("spanish_real_estate", CUSTOM_DATA_DIR)
     except Exception:
         real_estate_data = {"indicators": {}}

@@ -2,10 +2,9 @@
 
 import json
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import pandas as pd
-
 
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
 OPENBB_DATA_DIR = DATA_DIR / "openbb_data"
@@ -20,7 +19,7 @@ def ensure_directory(path: Path) -> None:
 def save_to_csv(
     data: pd.DataFrame,
     filename: str,
-    directory: Union[Path, str] = OPENBB_DATA_DIR,
+    directory: Path | str = OPENBB_DATA_DIR,
     index: bool = False,
 ) -> Path:
     """
@@ -44,7 +43,7 @@ def save_to_csv(
 
 def load_from_csv(
     filename: str,
-    directory: Union[Path, str] = OPENBB_DATA_DIR,
+    directory: Path | str = OPENBB_DATA_DIR,
     **kwargs,
 ) -> pd.DataFrame:
     """
@@ -68,7 +67,7 @@ def load_from_csv(
 def save_to_json(
     data: Any,
     filename: str,
-    directory: Union[Path, str] = CUSTOM_DATA_DIR,
+    directory: Path | str = CUSTOM_DATA_DIR,
     indent: int = 2,
 ) -> Path:
     """
@@ -93,7 +92,7 @@ def save_to_json(
 
 def load_from_json(
     filename: str,
-    directory: Union[Path, str] = CUSTOM_DATA_DIR,
+    directory: Path | str = CUSTOM_DATA_DIR,
 ) -> Any:
     """
     Load data from JSON file.
@@ -113,7 +112,7 @@ def load_from_json(
         return json.load(f)
 
 
-def clear_cache(directory: Union[Path, str] = DATA_DIR) -> int:
+def clear_cache(directory: Path | str = DATA_DIR) -> int:
     """
     Clear all cached data files recursively.
     

@@ -2,12 +2,11 @@
 
 import logging
 import sys
-from typing import Optional
 
 
 def setup_logging(
     name: str = "macro_reporter",
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
     level: int = logging.INFO,
 ) -> logging.Logger:
     """

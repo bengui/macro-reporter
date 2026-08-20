@@ -11,8 +11,8 @@ import requests
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.utils.caching import (
-    save_to_json,
     CUSTOM_DATA_DIR,
+    save_to_json,
 )
 from scripts.utils.logging import setup_logging
 
@@ -33,8 +33,9 @@ def fetch_supply_chain() -> None:
         response.raise_for_status()
         
         # Parse CSV data
-        import pandas as pd
         from io import StringIO
+
+        import pandas as pd
         
         df = pd.read_csv(StringIO(response.text))
         if df.empty:

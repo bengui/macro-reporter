@@ -65,7 +65,7 @@ def fetch_all_data() -> None:
     try:
         # Fetch custom data
         logger.info("\nFetching custom API data...")
-        from scripts.fetch_all import main as fetch_all_custom
+        from scripts.fetch_all import fetch_all as fetch_all_custom
         fetch_all_custom()
         logger.info("Custom data fetched successfully")
     except Exception as e:
@@ -110,7 +110,7 @@ def copy_data_to_test_folder(test_data_dir: Path, source_dir: Path) -> int:
     return count
 
 
-def store_test_data(test_data_dir: Path = None) -> Path:
+def store_test_data(test_data_dir: Path | None = None) -> Path:
     """
     Copy all fetched data to a test data directory.
     
@@ -152,7 +152,7 @@ def store_test_data(test_data_dir: Path = None) -> Path:
     return test_data_dir
 
 
-def commit_test_data(test_data_dir: Path = None, commit_message: str = None) -> bool:
+def commit_test_data(test_data_dir: Path | None = None, commit_message: str | None = None) -> bool:
     """
     Commit the test data to git.
     
@@ -265,7 +265,7 @@ def main() -> None:
         return
     
     # Step 2: Store data in test folder
-    stored_dir = store_test_data(test_data_dir)
+    store_test_data(test_data_dir)
     
     # Step 3: Optionally commit to git
     if args.commit:

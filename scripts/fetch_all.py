@@ -6,20 +6,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from scripts.utils.logging import setup_logging
-
 # Import all fetch functions
 from scripts.fetch_ecb import (
-    fetch_euribor,
-    fetch_ecb_yield_curve,
-    fetch_ecb_reference_rates,
-    fetch_ecb_exchange_rates,
     fetch_bond_spreads,
+    fetch_ecb_exchange_rates,
+    fetch_ecb_reference_rates,
+    fetch_ecb_yield_curve,
+    fetch_euribor,
 )
 from scripts.fetch_gdelt import fetch_gdelt
-from scripts.fetch_supply_chain import fetch_supply_chain
 from scripts.fetch_ipos import fetch_ipos
 from scripts.fetch_spanish_real_estate import fetch_spanish_real_estate
+from scripts.fetch_supply_chain import fetch_supply_chain
+from scripts.utils.logging import setup_logging
 
 logger = setup_logging("fetch_all")
 
