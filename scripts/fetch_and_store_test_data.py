@@ -25,8 +25,8 @@ Usage:
 import argparse
 import os
 import shutil
-import sys
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -34,11 +34,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.utils.caching import (
-    OPENBB_DATA_DIR,
     CUSTOM_DATA_DIR,
     DATA_DIR,
+    OPENBB_DATA_DIR,
 )
-from scripts.utils.logging import setup_logging, log_data_loaded, log_data_issue, log_missing_data
+from scripts.utils.logging import (
+    log_data_issue,
+    log_data_loaded,
+    log_missing_data,
+    setup_logging,
+)
 
 logger = setup_logging("fetch_and_store_test_data")
 

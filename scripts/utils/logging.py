@@ -96,7 +96,7 @@ def log_missing_data(logger: logging.Logger, data_source: str, context: str = ""
     logger.warning(message)
 
 
-def log_invalid_data(logger: logging.Logger, data_source: str, reason: str, value: any = None) -> None:
+def log_invalid_data(logger: logging.Logger, data_source: str, reason: str, value: object = None) -> None:
     """
     Log that data is invalid.
     
@@ -110,7 +110,7 @@ def log_invalid_data(logger: logging.Logger, data_source: str, reason: str, valu
     logger.warning(f"[INVALID_DATA] {data_source}: {reason} (value: {value_str})")
 
 
-def log_data_loaded(logger: logging.Logger, data_source: str, record_count: int = 0, columns: list = None) -> None:
+def log_data_loaded(logger: logging.Logger, data_source: str, record_count: int = 0, columns: list | None = None) -> None:
     """
     Log that data was successfully loaded.
     

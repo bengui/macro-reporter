@@ -137,7 +137,7 @@ def fetch_bde_series_with_history(
             return None
         
         # Parse dates and values
-        observations = []
+        observations: list[dict[str, object]] = []
         for date_str, value in zip(dates, values):
             try:
                 date_obj = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
@@ -151,7 +151,7 @@ def fetch_bde_series_with_history(
         if not observations:
             return None
         
-        observations.sort(key=lambda x: x["date"])
+        observations = sorted(observations, key=lambda x: x["date"])  # type: ignore
         
         return {
             "latest": observations[-1]["value"],

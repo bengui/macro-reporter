@@ -46,7 +46,7 @@ from scripts.utils.logging import (
 logger = setup_logging("generate_report")
 
 
-def validate_dataframe(df: pd.DataFrame, data_source: str, expected_columns: list = None) -> bool:
+def validate_dataframe(df: pd.DataFrame, data_source: str, expected_columns: list | None = None) -> bool:
     """
     Validate a DataFrame and log any issues.
     
@@ -122,7 +122,7 @@ THRESHOLDS: dict[str, dict[str, int | float]] = {
 }
 
 
-def get_latest_value(df: pd.DataFrame, column: str = "close", data_source: str = None) -> float:
+def get_latest_value(df: pd.DataFrame, column: str = "close", data_source: str | None = None) -> float:
     """Get the latest value from a DataFrame."""
     if df.empty:
         if data_source:
