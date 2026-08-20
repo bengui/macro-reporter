@@ -5,7 +5,6 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import requests
 
@@ -14,8 +13,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.utils.api_keys import get_api_key
 from scripts.utils.caching import (
-    save_to_json,
     CUSTOM_DATA_DIR,
+    save_to_json,
 )
 from scripts.utils.logging import setup_logging
 
@@ -41,9 +40,9 @@ if ECB_KEY:
 def fetch_ecb_series(
     dataflow: str,
     series_key: str,
-    start_date: Optional[str] = None,
+    start_date: str | None = None,
     timeout: int = 30
-) -> Optional[dict]:
+) -> dict | None:
     """
     Fetch a single series from ECB Data Portal API.
     
@@ -323,8 +322,8 @@ def fetch_bond_spreads() -> None:
         return
     
     try:
-        from openbb import obb
         import pandas as pd
+        from openbb import obb
         
         # FRED series for 10Y government bond yields
         # Source: https://fred.stlouisfed.org/

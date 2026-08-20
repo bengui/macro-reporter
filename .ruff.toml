@@ -1,0 +1,19 @@
+exclude = ["test_data"]
+
+[lint]
+ignore = [
+    "EXE001",   # Shebang in non-executable files
+    "BLE001",   # Do not catch blind exception
+    "DTZ005",   # datetime.now() without tz
+    "DTZ006",   # datetime.fromtimestamp() without tz
+    "DTZ007",   # datetime.strptime() without %z
+    "F401",     # Unused imports
+    "F541",     # f-string without placeholders
+    "F841",     # Local variable assigned but never used
+    "PLW1510",  # subprocess.run without explicit check
+    "RUF013",   # PEP 484 prohibits implicit Optional
+    "RUF034",   # Useless if-else condition
+    "S110",     # try-except-pass
+    "UP045",    # Use X | None for type annotations
+]
+fixable = ["I001"]

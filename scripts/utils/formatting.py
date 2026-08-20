@@ -1,11 +1,11 @@
 """Formatting utilities for macro_reporter."""
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 
 def format_number(
-    value: Optional[float],
+    value: float | None,
     decimals: int = 2,
     thousands_sep: str = ",",
     decimal_sep: str = ".",
@@ -49,7 +49,7 @@ def format_number(
 
 
 def format_percentage(
-    value: Optional[float],
+    value: float | None,
     decimals: int = 2,
     show_sign: bool = True,
 ) -> str:
@@ -74,7 +74,7 @@ def format_percentage(
 
 
 def format_date(
-    date: Optional[Any] = None,
+    date: Any | None = None,
     format_str: str = "%Y-%m-%d",
 ) -> str:
     """

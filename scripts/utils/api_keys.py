@@ -2,13 +2,11 @@
 
 import os
 from pathlib import Path
-from typing import Dict, Optional
-
 
 API_KEYS_DIR = Path(__file__).parent.parent.parent / "api_keys"
 
 
-def load_api_keys() -> Dict[str, str]:
+def load_api_keys() -> dict[str, str]:
     """
     Load all API keys from the api_keys directory.
     
@@ -36,7 +34,7 @@ def load_api_keys() -> Dict[str, str]:
     return keys
 
 
-def get_api_key(service: str) -> Optional[str]:
+def get_api_key(service: str) -> str | None:
     """
     Get API key for a specific service.
     

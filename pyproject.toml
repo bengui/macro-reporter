@@ -18,3 +18,5 @@ dev = [
     "ruff",
     "ty",
 ]
+
+[tool.ty]

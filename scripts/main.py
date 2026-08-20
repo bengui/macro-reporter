@@ -83,7 +83,7 @@ def run_generate_report(report_type: str = "daily", output_format: str = "both",
         return False
 
 
-def run_fetch_and_store_test_data(commit: bool = False, test_data_dir: str = None) -> bool:
+def run_fetch_and_store_test_data(commit: bool = False, test_data_dir: str | None = None) -> bool:
     """Run fetch_and_store_test_data.py script."""
     logger.info("Running fetch_and_store_test_data.py...")
     try:

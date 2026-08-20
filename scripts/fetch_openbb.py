@@ -18,13 +18,18 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Set API keys as environment variables BEFORE importing obb
 # This is required for OpenBB to pick them up
-from scripts.utils.api_keys import get_api_key
 from openbb import obb
+
+from scripts.utils.api_keys import get_api_key
 from scripts.utils.caching import (
-    save_to_csv,
     OPENBB_DATA_DIR,
+    save_to_csv,
 )
-from scripts.utils.logging import setup_logging, log_data_issue, log_missing_data, log_invalid_data, log_data_loaded
+from scripts.utils.logging import (
+    log_data_issue,
+    log_data_loaded,
+    setup_logging,
+)
 
 FRED_KEY = get_api_key("FRED")
 if FRED_KEY:
