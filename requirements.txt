@@ -1,14 +1,6 @@
-openbb==4.5.0
+openbb==4.7.2
 pandas>=2.0.0
 weasyprint>=58.0
 requests>=2.31.0
 matplotlib>=3.8.0
 plotly>=5.18.0
-# Pin OpenBB sub-packages to 1.5.x series to avoid breaking changes in 1.6.x
-# openbb-core 1.6.13+ has breaking changes in provider_interface
-openbb-core>=1.5.0,<1.6.0
-openbb-economy>=1.5.0,<1.6.0
-openbb-equity>=1.5.0,<1.6.0
-openbb-fixedincome>=1.5.0,<1.6.0
-openbb-fred>=1.5.0,<1.6.0
-openbb-index>=1.5.0,<1.6.0
