@@ -4,3 +4,11 @@ weasyprint>=58.0
 requests>=2.31.0
 matplotlib>=3.8.0
 plotly>=5.18.0
+# Pin OpenBB sub-packages to versions compatible with openbb 4.7.2
+# and that have the required OBBject_* classes
+openbb-core>=1.5.0,<1.6.0
+openbb-economy>=1.5.0,<1.6.0
+openbb-equity>=1.5.0,<1.6.0
+openbb-fixedincome>=1.5.0,<1.6.0
+openbb-fred>=1.5.0,<1.6.0
+openbb-index>=1.5.0,<1.6.0
